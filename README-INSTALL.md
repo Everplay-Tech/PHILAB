@@ -1,6 +1,15 @@
 # PHILAB Installation Guide
 
-## Quick Install (Recommended)
+## Easiest Method (macOS DMG)
+
+1. Download the installer from our [Releases page](https://github.com/E-TECH-PLAYTECH/PHILAB/releases).
+   - **Standard Installer**: `PHILAB-1.0.0-Installer.dmg` (Fast, Mock Model)
+   - **Full Installer**: `PHILAB-1.0.0-with-Phi2-Installer.dmg` (Includes Phi-2 Model)
+2. Open the DMG file.
+3. Double-click the installer script inside.
+4. Follow the prompts.
+
+## Quick Install (Terminal)
 
 ### With Mock Model (Fast, ~500MB)
 ```bash

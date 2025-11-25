@@ -19,6 +19,13 @@ set -e
 # Parse command-line arguments
 WITH_PHI2=false
 
+# Check if script name implies Phi-2 installation
+SCRIPT_NAME=$(basename "$0")
+if [[ "$SCRIPT_NAME" == *"phi2"* ]] || [[ "$SCRIPT_NAME" == *"Phi2"* ]]; then
+    WITH_PHI2=true
+    echo "Detected Phi-2 installation mode from filename: $SCRIPT_NAME"
+fi
+
 for arg in "$@"; do
     case $arg in
         --with-phi2)

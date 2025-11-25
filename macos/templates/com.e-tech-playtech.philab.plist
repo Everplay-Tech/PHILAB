@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Service Identification -->
+    <key>Label</key>
+    <string>com.e-tech-playtech.philab</string>
+
+    <key>Disabled</key>
+    <false/>
+
+    <!-- Program and Arguments -->
+    <key>Program</key>
+    <string>/Applications/PHILAB.app/Contents/MacOS/philab</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/PHILAB.app/Contents/MacOS/philab</string>
+        <string>--mode</string>
+        <string>service</string>
+    </array>
+
+    <!-- Execution Context -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <!-- Restart if crashed -->
+        <key>SuccessfulExit</key>
+        <false/>
+        <!-- Don't restart on normal exit -->
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <!-- Environment -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>PHILAB_MODE</key>
+        <string>production</string>
+        <key>PHILAB_LOG_LEVEL</key>
+        <string>info</string>
+        <key>PHILAB_DATA_DIR</key>
+        <string>/usr/local/var/philab</string>
+    </dict>
+
+    <!-- Working Directory -->
+    <key>WorkingDirectory</key>
+    <string>/usr/local/var/philab</string>
+
+    <!-- User and Group -->
+    <key>UserName</key>
+    <string>_philab</string>
+
+    <key>GroupName</key>
+    <string>_philab</string>
+
+    <!-- Logging -->
+    <key>StandardOutPath</key>
+    <string>/usr/local/var/log/philab/stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/usr/local/var/log/philab/stderr.log</string>
+
+    <!-- Process Management -->
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>Nice</key>
+    <integer>0</integer>
+
+    <!-- Resource Limits -->
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>4096</integer>
+    </dict>
+
+    <key>HardResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>8192</integer>
+    </dict>
+
+    <!-- Throttling -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+
+    <!-- Exit Timeout -->
+    <key>ExitTimeOut</key>
+    <integer>30</integer>
+
+    <!-- Network -->
+    <key>Sockets</key>
+    <dict>
+        <key>Listeners</key>
+        <dict>
+            <key>SockServiceName</key>
+            <string>8000</string>
+            <key>SockType</key>
+            <string>stream</string>
+            <key>SockFamily</key>
+            <string>IPv4</string>
+        </dict>
+    </dict>
+</dict>
+</plist>

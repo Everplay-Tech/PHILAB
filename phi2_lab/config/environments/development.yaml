@@ -1,0 +1,56 @@
+# Development Environment Configuration
+
+env: development
+debug: true
+
+model:
+  model_name_or_path: microsoft/phi-2
+  device: cpu
+  dtype: float32
+  use_mock: true  # Use mock for faster development
+  trust_remote_code: false
+  max_length: 100
+
+atlas:
+  path: ./phi2_lab/phi2_atlas/data/atlas_dev.db
+  embedding_dim: 2560
+  max_entries: 1000  # Lower limit for dev
+
+adapters:
+  stopping:
+    epsilon: 0.001
+    window: 3
+  bias:
+    num_layers: 32
+    target_layers: [4, 8, 12, 16, 20, 24]
+  lens:
+    layers: [0, 4, 8, 12, 16, 20, 24, 28, 31]
+
+compression:
+  codebook:
+    size: 256
+    embedding_dim: 2560
+  training:
+    batch_size: 16  # Smaller batch for dev
+    epochs: 10  # Fewer epochs for dev
+    learning_rate: 0.001
+
+context:
+  retriever:
+    top_k: 5
+  builder:
+    max_tokens: 1000
+
+experiments:
+  output_dir: ./results/dev
+  save_results: true
+  save_format: json
+
+logging:
+  level: DEBUG
+  format: text
+  file: ./logs/philab_dev.log
+
+performance:
+  max_workers: 2
+  enable_profiling: true

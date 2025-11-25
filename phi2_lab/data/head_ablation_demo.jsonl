@@ -1,0 +1,3 @@
+{"input": "2 + 2 equals 4", "label": "math"}
+{"input": "Spell the word giraffe", "label": "spelling"}
+{"input": "List three colors: red, blue, green", "label": "colors"}

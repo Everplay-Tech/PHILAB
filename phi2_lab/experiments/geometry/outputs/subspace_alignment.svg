@@ -1,0 +1,33 @@
+<svg width="720" height="420" viewBox="0 0 720 420" xmlns="http://www.w3.org/2000/svg">
+<style>text { font-family: "DejaVu Sans", sans-serif; }</style>
+<text x="360.0" y="32.0" font-size="16" text-anchor="middle">Adapter vs DSL subspace overlap with base</text>
+<text x="16.0" y="210.0" font-size="12" transform="rotate(-90 16.0,210.0)">Mean subspace overlap</text>
+<line x1="64" y1="356" x2="656" y2="356" stroke="#555" stroke-width="1.5" />
+<line x1="64" y1="64" x2="64" y2="356" stroke="#555" stroke-width="1.5" />
+<line x1="64" y1="356.0" x2="656" y2="356.0" stroke="#ddd" stroke-width="1" />
+<text x="54" y="360.0" font-size="12" text-anchor="end">0.50</text>
+<line x1="64" y1="297.6" x2="656" y2="297.6" stroke="#ddd" stroke-width="1" />
+<text x="54" y="301.6" font-size="12" text-anchor="end">0.60</text>
+<line x1="64" y1="239.2" x2="656" y2="239.2" stroke="#ddd" stroke-width="1" />
+<text x="54" y="243.2" font-size="12" text-anchor="end">0.70</text>
+<line x1="64" y1="180.8" x2="656" y2="180.8" stroke="#ddd" stroke-width="1" />
+<text x="54" y="184.8" font-size="12" text-anchor="end">0.80</text>
+<line x1="64" y1="122.4" x2="656" y2="122.4" stroke="#ddd" stroke-width="1" />
+<text x="54" y="126.4" font-size="12" text-anchor="end">0.90</text>
+<line x1="64" y1="64.0" x2="656" y2="64.0" stroke="#ddd" stroke-width="1" />
+<text x="54" y="68.0" font-size="12" text-anchor="end">1.00</text>
+<text x="64.0" y="380" font-size="12" text-anchor="middle">0</text>
+<text x="148.6" y="380" font-size="12" text-anchor="middle">1</text>
+<text x="233.1" y="380" font-size="12" text-anchor="middle">2</text>
+<text x="317.7" y="380" font-size="12" text-anchor="middle">3</text>
+<text x="402.3" y="380" font-size="12" text-anchor="middle">4</text>
+<text x="486.9" y="380" font-size="12" text-anchor="middle">5</text>
+<text x="571.4" y="380" font-size="12" text-anchor="middle">6</text>
+<text x="656.0" y="380" font-size="12" text-anchor="middle">7</text>
+<path d="M 64.0,175.1 L 148.6,279.5 L 233.1,250.0 L 317.7,216.4 L 402.3,178.9 L 486.9,211.3 L 571.4,250.6 L 656.0,289.9" fill="none" stroke="#d62728" stroke-width="2" />
+<path d="M 64.0,169.7 L 148.6,197.0 L 233.1,107.8 L 317.7,282.2 L 402.3,124.2 L 486.9,113.7 L 571.4,143.4 L 656.0,128.0" fill="none" stroke="#2ca02c" stroke-width="2" />
+<rect x="666" y="54" width="18" height="12" fill="#d62728" />
+<text x="690" y="64" font-size="12" text-anchor="start">adapter</text>
+<rect x="666" y="72" width="18" height="12" fill="#2ca02c" />
+<text x="690" y="82" font-size="12" text-anchor="start">dsl</text>
+</svg>

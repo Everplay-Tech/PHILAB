@@ -1,0 +1,69 @@
+codes:
+  - code: "§ARCH"
+    title: "Architectural Playbook"
+    summary: "Template for breaking down Phi-2 subsystems."
+    payload: "docs/architectural_playbook.md"
+    tags: [architecture, atlas]
+    dsl:
+      intent: "Enumerate structural facets for adapter/context planning."
+      bindings:
+        - name: architecture_note
+          value: docs/architecture/phi2_reference.md
+          description: Canonical reference for layer/width settings.
+      steps:
+        - LOAD ${architecture_note}
+        - EXTRACT layer spans, attention-head roles, and MLP focuses
+        - WRITE tables into atlas/structure/phi2_architecture.md
+      outputs:
+        - "Layer and block catalog referenced by §ARCH"
+  - code: "§EXP"
+    title: "Experiment Baselines"
+    summary: "Checklist for defining experiment specs."
+    payload: "docs/experiment_baselines.md"
+    tags: [experiments]
+    dsl:
+      intent: "Stamp out scaffolded experiment specs."
+      bindings:
+        - name: template_path
+          value: docs/experiment_baselines.md
+          description: Markdown checklist that agents follow.
+      steps:
+        - LOAD ${template_path}
+        - FILL IN dataset, prompt style, adapters, and DSL references
+        - EMIT finalized spec into experiments/<name>/README.md
+      outputs:
+        - "Spec document aligned with §EXP"
+  - code: "§GEOM/A1"
+    title: "Adapter energy guardrail"
+    summary: "Adapters must add >0.002 variance in reasoning layers."
+    payload: "phi2_lab/atlas/structure/phi2_geometry.md#subspace-energy-trends"
+    tags: [geometry, adapters]
+    dsl:
+      intent: "Recompute PC1 variance deltas for adapters vs DSL formatting."
+      bindings:
+        - name: results_path
+          value: phi2_lab/experiments/geometry/outputs/geometry_results.json
+          description: Output emitted by `experiments/geometry/run_probes.py`.
+      steps:
+        - LOAD ${results_path}
+        - COMPUTE (adapter_pc1 - base_pc1) per layer
+        - ASSERT reasoning layers >= 0.002 variance gain
+      outputs:
+        - "Layer-wise variance delta table"
+  - code: "§GEOM/S1"
+    title: "Subspace stability window"
+    summary: "DSL formatting must keep overlap ≥0.77 with baseline."
+    payload: "phi2_lab/atlas/structure/phi2_geometry.md#principal-direction-stability"
+    tags: [geometry, dsl]
+    dsl:
+      intent: "Track adapter vs DSL subspace alignment deltas."
+      bindings:
+        - name: results_path
+          value: phi2_lab/experiments/geometry/outputs/geometry_results.json
+          description: Shared metric export for Atlas citations.
+      steps:
+        - LOAD ${results_path}
+        - MEASURE cosine overlap for adapter and DSL interventions
+        - FLAG layers where DSL overlap < 0.77
+      outputs:
+        - "List of layers that breach the §GEOM/S1 threshold"

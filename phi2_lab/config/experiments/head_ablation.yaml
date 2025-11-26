@@ -1,0 +1,16 @@
+id: "head_ablation_demo"
+description: "Measure per-head impact on a tiny demo dataset"
+type: "head_ablation"
+
+dataset:
+  name: "demo_head_ablation"
+  path: "phi2_lab/data/head_ablation_demo.jsonl"
+  format: "jsonl"
+
+layers: [0, 1]
+heads: [0]
+ablation_mode: "zero"
+metrics:
+  - "loss"
+  - "accuracy"
+  - "importance"

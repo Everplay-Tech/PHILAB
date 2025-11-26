@@ -1,0 +1,77 @@
+# Production Environment Configuration
+
+env: production
+debug: false
+
+model:
+  model_name_or_path: microsoft/phi-2
+  device: cuda  # Use GPU in production
+  dtype: float16  # Use half precision for efficiency
+  use_mock: false
+  trust_remote_code: false
+  max_length: 2048
+
+atlas:
+  path: /app/data/atlas/atlas_prod.db
+  embedding_dim: 2560
+  max_entries: 100000
+
+adapters:
+  stopping:
+    epsilon: 0.001
+    window: 3
+  bias:
+    num_layers: 32
+    target_layers: [4, 8, 12, 16, 20, 24]
+  lens:
+    layers: [0, 4, 8, 12, 16, 20, 24, 28, 31]
+
+compression:
+  codebook:
+    size: 256
+    embedding_dim: 2560
+  training:
+    batch_size: 64
+    epochs: 50
+    learning_rate: 0.001
+
+context:
+  retriever:
+    top_k: 15
+  builder:
+    max_tokens: 2048
+
+experiments:
+  output_dir: /app/results
+  save_results: true
+  save_format: json
+
+logging:
+  level: WARNING
+  format: json
+  file: /app/logs/philab_prod.log
+  rotation: 1d
+  retention: 30d
+  structured: true
+
+performance:
+  max_workers: 8
+  enable_profiling: false
+  batch_timeout: 30
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  prometheus_enabled: true
+  health_check_port: 8080
+
+security:
+  enable_auth: true
+  rate_limit: 1000
+  max_request_size: 10485760  # 10 MB
+
+reliability:
+  max_retries: 3
+  retry_backoff: 2
+  circuit_breaker_threshold: 5
+  circuit_breaker_timeout: 60

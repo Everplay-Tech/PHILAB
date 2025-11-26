@@ -1,0 +1,62 @@
+# Staging Environment Configuration
+
+env: staging
+debug: false
+
+model:
+  model_name_or_path: microsoft/phi-2
+  device: cpu  # Use cuda if available
+  dtype: float32
+  use_mock: false  # Use real model in staging
+  trust_remote_code: false
+  max_length: 512
+
+atlas:
+  path: ./phi2_lab/phi2_atlas/data/atlas_staging.db
+  embedding_dim: 2560
+  max_entries: 5000
+
+adapters:
+  stopping:
+    epsilon: 0.001
+    window: 3
+  bias:
+    num_layers: 32
+    target_layers: [4, 8, 12, 16, 20, 24]
+  lens:
+    layers: [0, 4, 8, 12, 16, 20, 24, 28, 31]
+
+compression:
+  codebook:
+    size: 256
+    embedding_dim: 2560
+  training:
+    batch_size: 32
+    epochs: 30
+    learning_rate: 0.001
+
+context:
+  retriever:
+    top_k: 10
+  builder:
+    max_tokens: 2048
+
+experiments:
+  output_dir: ./results/staging
+  save_results: true
+  save_format: json
+
+logging:
+  level: INFO
+  format: json
+  file: ./logs/philab_staging.log
+  rotation: 1d
+  retention: 7d
+
+performance:
+  max_workers: 4
+  enable_profiling: false
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090

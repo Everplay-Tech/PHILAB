@@ -1,0 +1,128 @@
+lenses:
+  stability:
+    id: stability
+    description: |
+      A conservative LoRA lens that improves planning reliability at the cost
+      of some creativity.
+    path: ./adapters/stability
+    target_modules: [attn, mlp]
+    rank: 8
+    alpha: 16
+    target_tasks:
+      - planning
+      - risk_mitigation
+    primary_metrics:
+      - plan_success_rate
+      - constraint_adherence
+    secondary_metrics:
+      - latency_ms
+      - token_usage
+    max_token_overhead: 256
+    status: active
+  baseline:
+    id: baseline
+    description: |
+      Default baseline adapter used when no specialized lens is requested.
+    path: ./adapters/baseline
+    target_modules: [attn, mlp]
+    rank: 8
+    alpha: 16
+    target_tasks:
+      - general_assistance
+    primary_metrics:
+      - response_consistency
+      - factuality
+    secondary_metrics:
+      - latency_ms
+      - token_usage
+    max_token_overhead: 192
+    status: active
+  interpretability_lens:
+    id: interpretability_lens
+    description: |
+      Lightweight interpretability lens to surface key attention patterns for roadmap design.
+    path: ./adapters/interpretability
+    target_modules: [attn]
+    rank: 4
+    alpha: 8
+    target_tasks:
+      - interpretability
+      - roadmap_design
+    primary_metrics:
+      - saliency_coverage
+    secondary_metrics:
+      - novelty_score
+    max_token_overhead: 128
+    status: experimental
+  code_lens:
+    id: code_lens
+    description: |
+      Code-oriented lens tuned for experiment spec drafting and implementation fidelity.
+    path: ./adapters/code_lens
+    target_modules: [mlp]
+    rank: 8
+    alpha: 16
+    target_tasks:
+      - code_generation
+      - debugging
+    primary_metrics:
+      - pass_rate
+      - lint_score
+    secondary_metrics:
+      - review_acceptance
+    max_token_overhead: 224
+    status: active
+  documentation_lens:
+    id: documentation_lens
+    description: |
+      Lens optimized for summarization clarity and Atlas documentation quality.
+    path: ./adapters/documentation
+    target_modules: [attn, mlp]
+    rank: 6
+    alpha: 12
+    target_tasks:
+      - summarization
+      - documentation
+    primary_metrics:
+      - doc_quality
+      - clarity_score
+    secondary_metrics:
+      - cohesion
+    max_token_overhead: 200
+    status: active
+  compression_lens:
+    id: compression_lens
+    description: |
+      DSL/compression-focused lens to maintain structure while condensing semantic codes.
+    path: ./adapters/compression
+    target_modules: [attn, mlp]
+    rank: 8
+    alpha: 16
+    target_tasks:
+      - compression
+      - retrieval
+    primary_metrics:
+      - compression_ratio
+      - fidelity
+    secondary_metrics:
+      - recall
+    max_token_overhead: 160
+    status: experimental
+  meta_tuner_lens:
+    id: meta_tuner_lens
+    description: |
+      Meta-level tuning lens for adapter governance, safety checks, and rollback planning.
+    path: ./adapters/meta_tuner
+    target_modules: [attn, mlp]
+    rank: 12
+    alpha: 24
+    target_tasks:
+      - governance
+      - safety
+    primary_metrics:
+      - rollback_coverage
+      - guardrail_effectiveness
+    secondary_metrics:
+      - detection_precision
+    max_token_overhead: 320
+    status: staged

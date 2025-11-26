@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adapter Observatory</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="brand">Phi-2 Lab – Hyperbolic Geometry Atlas V3</div>
+    <div class="controls">
+      <div class="atlas-modes">
+        <button id="singleModelBtn" class="mode-btn active">Single Model</button>
+        <button id="dualModelBtn" class="mode-btn">Dual Model</button>
+        <button id="atlasModeBtn" class="mode-btn">Atlas Mode</button>
+      </div>
+      <div class="control-group">
+        <label for="primaryRunSelect">Run A:</label>
+        <select id="primaryRunSelect"></select>
+      </div>
+      <div class="control-group">
+        <label for="comparisonRunSelect">Run B:</label>
+        <select id="comparisonRunSelect"></select>
+      </div>
+      <div class="control-group">
+        <label><input type="checkbox" id="mockToggle" checked> Use mock data</label>
+      </div>
+    </div>
+  </header>
+  <main>
+    <aside id="spinesColumn">
+      <div class="spine-legend">
+        <h2>Model Spines</h2>
+        <p class="caption">Dual spines show per-layer metrics; arcs represent morphisms bridging Phi-2 and Phi-3 layers with alignment quality (green=high, yellow=mid, red=low).</p>
+      </div>
+      <div class="spine-row">
+        <div class="spine-card" id="primarySpine">
+          <div class="spine-header">
+            <div>
+              <h3>Run A Spine</h3>
+              <p class="caption" id="primaryRunLabel"></p>
+            </div>
+            <span class="chip focus-chip" id="primaryFocusChip">Focus</span>
+          </div>
+          <div id="layerListPrimary" class="layer-list"></div>
+        </div>
+        <svg id="alignmentArcs" viewBox="0 0 800 600" preserveAspectRatio="none"></svg>
+        <div class="spine-card" id="comparisonSpine">
+          <div class="spine-header">
+            <div>
+              <h3>Run B Spine</h3>
+              <p class="caption" id="comparisonRunLabel"></p>
+            </div>
+            <span class="chip ghost" id="comparisonFocusChip">Focus</span>
+          </div>
+          <div id="layerListComparison" class="layer-list"></div>
+        </div>
+      </div>
+      <div class="legend delta-legend" id="deltaLegend"></div>
+    </aside>
+    <section id="geometryCanvas">
+      <h2>Algebraic Geometry Atlas</h2>
+      <div id="objectToolbar">
+        <div class="chip active" id="residualBtn">Residual modes</div>
+        <div class="chip ghost" id="geodesicBtn">Geodesics</div>
+        <div class="chip ghost" id="sheafBtn">Sheaf fields</div>
+        <div class="chip ghost" id="chartBtn">Chart atlas</div>
+        <div id="selectedModeMeta"></div>
+      </div>
+      <div id="plotArea">
+        <svg id="scatterPlot" viewBox="0 0 400 400"></svg>
+      </div>
+      <div class="legend" id="algebraLegend">
+        <strong>Hyperbolic Geometry Atlas V3.</strong> Explore curved manifolds with Poincare disks, geodesic reasoning chains, sheaf fields for attention structures, and multi-chart atlases. Switch modes to navigate different geometric lenses on transformer thought spaces.
+      </div>
+      <div id="modeAtlas">
+        <div class="atlas-header">
+          <div>
+            <h3>Residual mode atlas</h3>
+            <p class="caption">Select a mode to project its span, growth, and semantics; when dual models are present, inspect morphisms and residual varieties.</p>
+          </div>
+          <div id="modeCounts" class="caption"></div>
+        </div>
+        <div id="modesList"></div>
+      </div>
+    </section>
+    <aside id="inspector">
+      <div class="panel">
+        <h2>Mode Growth</h2>
+        <svg id="timeline" viewBox="0 0 400 200"></svg>
+        <div id="timelineTooltip" class="tooltip hidden"></div>
+      </div>
+      <div class="panel">
+        <h2>Morphism Inspector</h2>
+        <div id="morphismDetails"></div>
+      </div>
+      <div class="panel">
+        <h2>Object Inspector</h2>
+        <div id="runDetails"></div>
+        <div id="comparisonDetails"></div>
+        <div id="layerDetails"></div>
+        <div id="modeInspector"></div>
+      </div>
+      <div class="panel">
+        <h2>Morphism Details</h2>
+        <div id="morphismInspector"></div>
+      </div>
+    </aside>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

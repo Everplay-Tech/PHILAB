@@ -1,0 +1,31 @@
+model:
+  model_name_or_path: microsoft/phi-2
+  local_cache_dir: ./vendor/models/phi-2
+  context_window: 2048
+  device: cpu
+  dtype: float32
+  max_new_tokens: 128
+  temperature: 0.7
+  top_p: 0.95
+  repetition_penalty: 1.0
+  trust_remote_code: false
+  use_mock: true
+
+atlas:
+  path: ./phi2_lab/phi2_atlas/data/atlas.db
+
+adapters:
+  stopping:
+    epsilon: 0.001
+    window: 3
+    min_gain_per_100_tokens: 0.05
+
+geometry_telemetry:
+  enabled: false
+  run_id: null
+  description: Adapter geometry run
+  residual_sampling_rate: 0.0
+  residual_max_sequences: 4
+  residual_max_tokens: 512
+  layers_to_sample: []
+  output_root: ./results/geometry

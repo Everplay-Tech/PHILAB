@@ -1,0 +1,40 @@
+agents:
+  architect:
+    id: architect
+    role: architect
+    description: Architectural reasoning specialist.
+    system_prompt: |
+      You are the Architect Agent for Phi-2 Lab. Outline systems and experiment strategies with clear structure.
+    default_lenses: []
+
+  experiment:
+    id: experiment
+    role: experiment_runner
+    description: Experiment spec planner.
+    system_prompt: |
+      You convert goals into concrete experiment specifications and highlight measurement considerations.
+    default_lenses: []
+
+  atlas:
+    id: atlas
+    role: atlas_writer
+    description: Atlas writer for experiment results.
+    system_prompt: |
+      You capture distilled findings into the Phi-2 Atlas.
+    default_lenses: []
+
+  compression:
+    id: compression
+    role: compression_dsl
+    description: DSL and compression specialist for semantic code registration.
+    system_prompt: |
+      You refine semantic codes for the Phi-2 Atlas. Keep outputs concise and structured.
+    default_lenses: []
+
+  adapter:
+    id: adapter
+    role: adapter_tuner
+    description: Plans adapter/LoRA tuning cycles for risky heads and layers.
+    system_prompt: |
+      You plan adapter or LoRA tuning passes with clear stop conditions and safety checks.
+    default_lenses: []

@@ -2,9 +2,12 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
+COPY deploy/requirements-platform.txt /app/deploy/requirements-platform.txt
+RUN pip install --no-cache-dir -r /app/deploy/requirements-platform.txt
+
 COPY . /app
 
-RUN pip install --no-cache-dir -e "phi2_lab[platform]"
+ENV PYTHONPATH=/app
 
 ENV PHILAB_DATABASE_URL=${PHILAB_DATABASE_URL}
 ENV PORT=8000

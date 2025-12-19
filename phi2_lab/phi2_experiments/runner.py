@@ -1,6 +1,7 @@
 """Experiment runner implementations."""
 from __future__ import annotations
 
+import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from statistics import mean
+import hashlib
 
 try:  # pragma: no cover - optional dependency guard
     import torch
@@ -31,7 +33,7 @@ from ..geometry_viz.integration import (
     log_model_geometry,
 )
 from .geometry import compute_pca, compute_svd, top_direction
-from .datasets import Record, load_dataset
+from .datasets import Record, load_dataset_with_limit
 from .metrics import (
     ExperimentResult,
     compute_accuracy_delta,
@@ -49,6 +51,7 @@ from .spec import ExperimentSpec, ExperimentType, GeometryConfig, ProbeTaskSpec
 
 logger = logging.getLogger(__name__)
 DEFAULT_HEAD_COUNT = 32
+MANIFEST_KEY = "run_manifest"
 
 
 @dataclass
@@ -70,6 +73,7 @@ class ExperimentRunner:
         geometry_recorder: GeometryTelemetryRecorder | None = None,
         geometry_settings: GeometryTelemetrySettings | None = None,
         adapter_ids: Sequence[str] | None = None,
+        semantic_tags: Sequence[str] | None = None,
     ) -> None:
         self.model_manager = model_manager
         self.atlas_writer = atlas_writer or (AtlasWriter(atlas_storage) if atlas_storage else None)
@@ -77,8 +81,23 @@ class ExperimentRunner:
         self.geometry_recorder = geometry_recorder
         self.geometry_settings = geometry_settings or GeometryTelemetrySettings()
         self._geometry_run_started = False
+        self._geometry_run_id: str | None = None
         self.adapter_ids = list(adapter_ids or [])
         self._residual_sampler: ResidualSampler | None = None
+        self.semantic_tags = list(semantic_tags or [])
+        self.record_limit: int | None = None
+        self.layer_limit: int | None = None
+        self.head_limit: int | None = None
+        self.max_length: int | None = None
+        self.batch_size: int | None = None
+
+    @staticmethod
+    def _sha256_file(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     def run(self, spec: ExperimentSpec) -> ExperimentResult:
         logger.info("Running experiment %s of type %s", spec.id, spec.type.value)
@@ -94,6 +113,9 @@ class ExperimentRunner:
         else:
             raise NotImplementedError(f"Experiment type {spec.type} is not implemented yet")
 
+        # Attach manifest
+        metadata[MANIFEST_KEY] = self._build_manifest(spec)
+
         result = ExperimentResult(
             spec=spec,
             timestamp=datetime.now(UTC).replace(microsecond=0),
@@ -102,6 +124,7 @@ class ExperimentRunner:
             metadata=metadata,
         )
         log_experiment_result(result, npz_payloads=npz_payloads)
+        self._record_atlas_experiment(result)
         self._record_geometry(step=1, spec=spec)
         self._finalize_geometry()
         return result
@@ -110,7 +133,7 @@ class ExperimentRunner:
         self, spec: ExperimentSpec
     ) -> tuple[Dict[str, Any], Dict[str, Dict[str, Dict[str, float]]], Dict[str, Any], Dict[str, Dict[str, np.ndarray]]]:
         self._ensure_torch_available()
-        records = load_dataset(spec.dataset)
+        records = load_dataset_with_limit(spec.dataset, max_records=self.record_limit)
         if not records:
             logger.warning("Experiment %s requested head ablation with empty dataset", spec.id)
             empty_summary = {
@@ -267,7 +290,7 @@ class ExperimentRunner:
         self._ensure_torch_available()
         if not spec.hooks:
             raise ValueError("Probe experiments require at least one hook definition")
-        records = load_dataset(spec.dataset)
+        records = load_dataset_with_limit(spec.dataset, max_records=self.record_limit)
         if not records:
             logger.warning("Experiment %s requested probe run with empty dataset", spec.id)
             return {"probe": {}}, {}, {
@@ -388,7 +411,7 @@ class ExperimentRunner:
         self._ensure_torch_available()
         if not spec.interventions:
             raise ValueError("direction_intervention specs require at least one intervention definition")
-        records = load_dataset(spec.dataset)
+        records = load_dataset_with_limit(spec.dataset, max_records=self.record_limit)
         if not records:
             logger.warning("Experiment %s requested intervention run with empty dataset", spec.id)
             empty_summary = {
@@ -511,7 +534,7 @@ class ExperimentRunner:
         self._ensure_torch_available()
         if not spec.hooks:
             raise ValueError("Geometry experiments require at least one hook definition")
-        records = load_dataset(spec.dataset)
+        records = load_dataset_with_limit(spec.dataset, max_records=self.record_limit)
         if not records:
             logger.warning("Experiment %s requested geometry run with empty dataset", spec.id)
             return {"geometry": {}}, {}, {
@@ -595,6 +618,7 @@ class ExperimentRunner:
             return_tensors="pt",
             truncation=True,
             padding=False,
+            max_length=self.max_length,
         )
         inputs: Dict[str, Tensor] = {key: value.to(device) for key, value in tokenized.items()}
         inputs["labels"] = inputs["input_ids"].clone()
@@ -603,10 +627,13 @@ class ExperimentRunner:
     def _compute_baseline(self, encoded_inputs: Sequence[Dict[str, Tensor]]) -> List[BaselineMetrics]:
         baseline_metrics: List[BaselineMetrics] = []
         empty_spec = HookSpec()
-        for encoded in encoded_inputs:
-            outputs = self._execute_forward(encoded, empty_spec)
-            loss, accuracy = self._extract_metrics(outputs, encoded["labels"], encoded.get("attention_mask"))
-            baseline_metrics.append(BaselineMetrics(loss=loss, accuracy=accuracy))
+        batch_size = self.batch_size or 1
+        for start in range(0, len(encoded_inputs), batch_size):
+            batch = encoded_inputs[start : start + batch_size]
+            for encoded in batch:
+                outputs = self._execute_forward(encoded, empty_spec)
+                loss, accuracy = self._extract_metrics(outputs, encoded["labels"], encoded.get("attention_mask"))
+                baseline_metrics.append(BaselineMetrics(loss=loss, accuracy=accuracy))
         return baseline_metrics
 
     def _execute_forward(self, inputs: Dict[str, Tensor], hook_spec: HookSpec) -> Any:
@@ -792,14 +819,16 @@ class ExperimentRunner:
         model = resources.model
         model_name = getattr(getattr(model, "config", None), "model_name", "phi-2") if model else "phi-2"
         if not self._geometry_run_started:
+            run_id = settings.run_id or f"geometry_{spec.id}"
             begin_geometry_run(
                 recorder,
-                run_id=settings.run_id or f"geometry_{spec.id}",
+                run_id=run_id,
                 description=settings.description or f"Geometry telemetry for {spec.id}",
                 model_name=model_name,
                 adapter_ids=self.adapter_ids,
             )
             self._geometry_run_started = True
+            self._geometry_run_id = run_id
         if model is None:
             return
         log_model_geometry(
@@ -815,7 +844,87 @@ class ExperimentRunner:
         recorder = self.geometry_recorder
         if recorder is None:
             return
-        finalize_geometry_run(recorder)
+        path = finalize_geometry_run(recorder)
+        if self.atlas_writer is not None and self._geometry_run_id:
+            try:
+                from phi2_lab.scripts.ingest_geometry_telemetry import ingest_run
+                root = self.geometry_settings.output_root or Path("results/geometry_viz")
+                ingest_run(self._geometry_run_id, self.atlas_writer, root=root)
+            except Exception as exc:
+                logger.warning("Failed to ingest geometry telemetry into Atlas: %s", exc)
+
+    def _record_atlas_experiment(self, result: ExperimentResult) -> None:
+        if self.atlas_writer is None:
+            return
+        tags = []
+        # Dataset name and spec id are always tagged
+        tags.append(result.spec.dataset.name)
+        tags.append(result.spec.id)
+        # Include any semantic tags provided at runner construction
+        tags.extend(self.semantic_tags)
+        # Add experiment type
+        tags.append(result.spec.type.value)
+        # Add task-specific tags
+        if result.spec.id.startswith("semantic_relations"):
+            tags.append("wordnet")
+        if result.spec.id.startswith("epistemology"):
+            tags.append("epistemology")
+        payload = {
+            "aggregated_metrics": result.aggregated_metrics,
+            "metadata": result.metadata,
+            "artifact_paths": result.artifact_paths,
+        }
+        self.atlas_writer.record_experiment_findings(
+            spec_id=result.spec.id,
+            exp_type=result.spec.type.value,
+            payload=payload,
+            result_path=result.artifact_paths.get("result_json", ""),
+            key_findings="",
+            tags=tags,
+        )
+        # Register semantic codes for downstream retrieval when applicable
+        if result.spec.id.startswith("semantic_relations"):
+            self.atlas_writer.register_semantic_code(
+                code=f"wordnet::{result.spec.id}",
+                title="WordNet semantic relations probe",
+                summary="Semantic relation separability across layers/heads",
+                payload=json.dumps(payload),
+                tags=["wordnet", "semantic_relations", result.spec.dataset.name],
+            )
+        if result.spec.id.startswith("epistemology"):
+            self.atlas_writer.register_semantic_code(
+                code=f"epistemology::{result.spec.id}",
+                title="Epistemology true/false probe",
+                summary="Truth-value geometry probe across layers/heads",
+                payload=json.dumps(payload),
+                tags=["epistemology", result.spec.dataset.name],
+            )
+
+    def _build_manifest(self, spec: ExperimentSpec) -> Dict[str, Any]:
+        manifest: Dict[str, Any] = {}
+        spec_path = getattr(self, "_spec_path", None)
+        dataset_path = getattr(self, "_dataset_path", None)
+        if spec_path and Path(spec_path).exists():
+            manifest["spec_path"] = str(spec_path)
+            manifest["spec_sha256"] = self._sha256_file(Path(spec_path))
+        if dataset_path and Path(dataset_path).exists():
+            manifest["dataset_path"] = str(dataset_path)
+            manifest["dataset_sha256"] = self._sha256_file(Path(dataset_path))
+        cfg = getattr(self.model_manager, "cfg", None)
+        if cfg:
+            manifest["model"] = {
+                "model_name_or_path": getattr(cfg, "model_name_or_path", ""),
+                "device": getattr(cfg, "device", ""),
+                "dtype": getattr(cfg, "dtype", ""),
+                "use_mock": getattr(cfg, "use_mock", False),
+                "trust_remote_code": getattr(cfg, "trust_remote_code", False),
+            }
+        manifest["limits"] = {
+            "record_limit": self.record_limit,
+            "layer_limit": self.layer_limit,
+            "head_limit": self.head_limit,
+        }
+        return manifest
 
     def _prepare_residual_sampler(self, records: Sequence[Record], tokenizer: Any, model: Any) -> None:
         if self._residual_sampler is not None:
@@ -836,6 +945,14 @@ def load_and_run(
     *,
     geometry_recorder: GeometryTelemetryRecorder | None = None,
     geometry_settings: GeometryTelemetrySettings | None = None,
+    atlas_writer: AtlasWriter | None = None,
+    atlas_storage: AtlasStorage | None = None,
+    semantic_tags: Sequence[str] | None = None,
+    record_limit: int | None = None,
+    layer_limit: int | None = None,
+    head_limit: int | None = None,
+    max_length: int | None = None,
+    batch_size: int | None = None,
     adapter_ids: Sequence[str] | None = None,
 ) -> ExperimentResult:
     spec = ExperimentSpec.from_yaml(spec_path)
@@ -852,6 +969,27 @@ def load_and_run(
         model_manager,
         geometry_recorder=geometry_recorder,
         geometry_settings=geometry_settings,
+        atlas_writer=atlas_writer,
+        atlas_storage=atlas_storage,
+        semantic_tags=semantic_tags,
         adapter_ids=adapter_ids,
     )
+    # Apply limits and track sources
+    runner.record_limit = record_limit
+    runner.layer_limit = layer_limit
+    runner.head_limit = head_limit
+    runner.max_length = max_length
+    runner.batch_size = batch_size
+    runner._spec_path = resolved_path  # type: ignore[attr-defined]
+    if spec.dataset.path:
+        runner._dataset_path = Path(spec.dataset.path)  # type: ignore[attr-defined]
+    # Clip layers/heads if limits provided
+    if layer_limit is not None and layer_limit >= 0:
+        layers = spec.iter_layers()[: layer_limit or None]
+        spec.layers = layers
+    if head_limit is not None and head_limit >= 0:
+        if spec.heads == "all":
+            spec.heads = list(range(head_limit))
+        else:
+            spec.heads = list(spec.heads)[:head_limit]
     return runner.run(spec)

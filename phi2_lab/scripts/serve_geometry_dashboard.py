@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,11 @@ import uvicorn
 from phi2_lab.geometry_viz import api as geometry_api
 from phi2_lab.geometry_viz import mock_data, telemetry_store
 from phi2_lab.utils import load_yaml_data
+from phi2_lab.phi2_core.config import load_app_config
+from phi2_lab.utils.validation import validate_runtime_config
+from phi2_lab.auth.api_keys import get_model_allowlists
 
+logger = logging.getLogger(__name__)
 
 def _load_app_config(config_path: Path) -> dict[str, Any]:
     if not config_path.exists():
@@ -61,11 +66,18 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    _load_app_config(args.config)
+    try:
+        app_cfg = load_app_config(args.config)
+        validate_runtime_config(app_cfg, base=Path(__file__).resolve().parents[1])
+    except Exception:
+        _load_app_config(args.config)
     static_dir = Path(__file__).resolve().parents[1] / "geometry_viz" / "static"
 
     if args.mock:
         telemetry_store.save_run_summary(mock_data.generate_mock_run())
+
+    open_models, restricted_models = get_model_allowlists()
+    logger.info("Geometry dashboard access: open=%s restricted=%s", sorted(open_models), sorted(restricted_models))
 
     app = build_app(static_dir=static_dir)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

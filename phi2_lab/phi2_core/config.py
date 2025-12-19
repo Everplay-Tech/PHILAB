@@ -113,7 +113,7 @@ class GeometryTelemetryConfig:
     residual_max_sequences: int = 4
     residual_max_tokens: int = 512
     layers_to_sample: list[int] | None = None
-    output_root: str | None = "./results/geometry"
+    output_root: str | None = "./results/geometry_viz"
 
     def __post_init__(self) -> None:
         if self.residual_sampling_rate < 0 or self.residual_sampling_rate > 1:
@@ -133,6 +133,26 @@ class GeometryTelemetryConfig:
 
 
 @dataclass
+class PlatformConfig:
+    """Configuration for the distributed platform integration."""
+
+    enabled: bool = False
+    central_url: str = "https://api.philab.everplay.tech"
+    auto_submit: bool = False
+    api_key: Optional[str] = None
+    contributor_id: Optional[str] = None
+
+
+@dataclass
+class GeometryViewerConfig:
+    """Configuration for geometry dashboard data sourcing."""
+
+    data_source: str = "local"
+    remote_url: str = "https://api.philab.everplay.tech"
+    default_dataset: str = "users"
+
+
+@dataclass
 class AppConfig:
     """Top-level configuration combining model and Atlas options."""
 
@@ -140,6 +160,8 @@ class AppConfig:
     atlas: AtlasConfig = field(default_factory=AtlasConfig)
     adapters: AdaptersConfig = field(default_factory=AdaptersConfig)
     geometry_telemetry: GeometryTelemetryConfig = field(default_factory=GeometryTelemetryConfig)
+    platform: PlatformConfig = field(default_factory=PlatformConfig)
+    geometry_viewer: GeometryViewerConfig = field(default_factory=GeometryViewerConfig)
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
@@ -160,11 +182,15 @@ def load_app_config(path: str | Path) -> AppConfig:
         stopping=AdaptersStoppingConfig(**(data.get("adapters", {}).get("stopping", {})))
     )
     telemetry_cfg = GeometryTelemetryConfig(**data.get("geometry_telemetry", {}))
+    platform_cfg = PlatformConfig(**data.get("platform", {}))
+    geometry_viewer_cfg = GeometryViewerConfig(**data.get("geometry_viewer", {}))
     return AppConfig(
         model=model_cfg,
         atlas=atlas_cfg,
         adapters=adapters_cfg,
         geometry_telemetry=telemetry_cfg,
+        platform=platform_cfg,
+        geometry_viewer=geometry_viewer_cfg,
     )
 
 

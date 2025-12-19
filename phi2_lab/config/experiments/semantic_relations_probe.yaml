@@ -1,0 +1,145 @@
+id: "semantic_relations_wordnet_full"
+description: "Probe activations for WordNet 3.1 semantic relations across all layers/heads"
+type: "probe"
+
+dataset:
+  name: "wordnet_relations_full"
+  path: "results/datasets/wordnet_relations.jsonl"
+  format: "jsonl"
+
+layers: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+heads: "all"
+ablation_mode: "zero"
+
+hooks:
+  - name: "layer0_self_attn"
+    point: { layer: 0, component: "self_attn" }
+  - name: "layer0_mlp"
+    point: { layer: 0, component: "mlp" }
+  - name: "layer1_self_attn"
+    point: { layer: 1, component: "self_attn" }
+  - name: "layer1_mlp"
+    point: { layer: 1, component: "mlp" }
+  - name: "layer2_self_attn"
+    point: { layer: 2, component: "self_attn" }
+  - name: "layer2_mlp"
+    point: { layer: 2, component: "mlp" }
+  - name: "layer3_self_attn"
+    point: { layer: 3, component: "self_attn" }
+  - name: "layer3_mlp"
+    point: { layer: 3, component: "mlp" }
+  - name: "layer4_self_attn"
+    point: { layer: 4, component: "self_attn" }
+  - name: "layer4_mlp"
+    point: { layer: 4, component: "mlp" }
+  - name: "layer5_self_attn"
+    point: { layer: 5, component: "self_attn" }
+  - name: "layer5_mlp"
+    point: { layer: 5, component: "mlp" }
+  - name: "layer6_self_attn"
+    point: { layer: 6, component: "self_attn" }
+  - name: "layer6_mlp"
+    point: { layer: 6, component: "mlp" }
+  - name: "layer7_self_attn"
+    point: { layer: 7, component: "self_attn" }
+  - name: "layer7_mlp"
+    point: { layer: 7, component: "mlp" }
+  - name: "layer8_self_attn"
+    point: { layer: 8, component: "self_attn" }
+  - name: "layer8_mlp"
+    point: { layer: 8, component: "mlp" }
+  - name: "layer9_self_attn"
+    point: { layer: 9, component: "self_attn" }
+  - name: "layer9_mlp"
+    point: { layer: 9, component: "mlp" }
+  - name: "layer10_self_attn"
+    point: { layer: 10, component: "self_attn" }
+  - name: "layer10_mlp"
+    point: { layer: 10, component: "mlp" }
+  - name: "layer11_self_attn"
+    point: { layer: 11, component: "self_attn" }
+  - name: "layer11_mlp"
+    point: { layer: 11, component: "mlp" }
+  - name: "layer12_self_attn"
+    point: { layer: 12, component: "self_attn" }
+  - name: "layer12_mlp"
+    point: { layer: 12, component: "mlp" }
+  - name: "layer13_self_attn"
+    point: { layer: 13, component: "self_attn" }
+  - name: "layer13_mlp"
+    point: { layer: 13, component: "mlp" }
+  - name: "layer14_self_attn"
+    point: { layer: 14, component: "self_attn" }
+  - name: "layer14_mlp"
+    point: { layer: 14, component: "mlp" }
+  - name: "layer15_self_attn"
+    point: { layer: 15, component: "self_attn" }
+  - name: "layer15_mlp"
+    point: { layer: 15, component: "mlp" }
+  - name: "layer16_self_attn"
+    point: { layer: 16, component: "self_attn" }
+  - name: "layer16_mlp"
+    point: { layer: 16, component: "mlp" }
+  - name: "layer17_self_attn"
+    point: { layer: 17, component: "self_attn" }
+  - name: "layer17_mlp"
+    point: { layer: 17, component: "mlp" }
+  - name: "layer18_self_attn"
+    point: { layer: 18, component: "self_attn" }
+  - name: "layer18_mlp"
+    point: { layer: 18, component: "mlp" }
+  - name: "layer19_self_attn"
+    point: { layer: 19, component: "self_attn" }
+  - name: "layer19_mlp"
+    point: { layer: 19, component: "mlp" }
+  - name: "layer20_self_attn"
+    point: { layer: 20, component: "self_attn" }
+  - name: "layer20_mlp"
+    point: { layer: 20, component: "mlp" }
+  - name: "layer21_self_attn"
+    point: { layer: 21, component: "self_attn" }
+  - name: "layer21_mlp"
+    point: { layer: 21, component: "mlp" }
+  - name: "layer22_self_attn"
+    point: { layer: 22, component: "self_attn" }
+  - name: "layer22_mlp"
+    point: { layer: 22, component: "mlp" }
+  - name: "layer23_self_attn"
+    point: { layer: 23, component: "self_attn" }
+  - name: "layer23_mlp"
+    point: { layer: 23, component: "mlp" }
+  - name: "layer24_self_attn"
+    point: { layer: 24, component: "self_attn" }
+  - name: "layer24_mlp"
+    point: { layer: 24, component: "mlp" }
+  - name: "layer25_self_attn"
+    point: { layer: 25, component: "self_attn" }
+  - name: "layer25_mlp"
+    point: { layer: 25, component: "mlp" }
+  - name: "layer26_self_attn"
+    point: { layer: 26, component: "self_attn" }
+  - name: "layer26_mlp"
+    point: { layer: 26, component: "mlp" }
+  - name: "layer27_self_attn"
+    point: { layer: 27, component: "self_attn" }
+  - name: "layer27_mlp"
+    point: { layer: 27, component: "mlp" }
+  - name: "layer28_self_attn"
+    point: { layer: 28, component: "self_attn" }
+  - name: "layer28_mlp"
+    point: { layer: 28, component: "mlp" }
+  - name: "layer29_self_attn"
+    point: { layer: 29, component: "self_attn" }
+  - name: "layer29_mlp"
+    point: { layer: 29, component: "mlp" }
+  - name: "layer30_self_attn"
+    point: { layer: 30, component: "self_attn" }
+  - name: "layer30_mlp"
+    point: { layer: 30, component: "mlp" }
+  - name: "layer31_self_attn"
+    point: { layer: 31, component: "self_attn" }
+  - name: "layer31_mlp"
+    point: { layer: 31, component: "mlp" }
+
+metrics:
+  - "probe"

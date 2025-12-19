@@ -1,0 +1,57 @@
+{"input": "The Earth orbits the Sun", "label": "true"}
+{"input": "Water boils at 100 degrees Celsius at sea level", "label": "true"}
+{"input": "The capital of France is Berlin", "label": "false"}
+{"input": "Humans need oxygen to survive", "label": "true"}
+{"input": "The Pacific Ocean is the smallest ocean on Earth", "label": "false"}
+{"input": "Light travels faster than sound", "label": "true"}
+{"input": "The Great Wall of China is visible from the Moon with the naked eye", "label": "false"}
+{"input": "Bats are mammals", "label": "true"}
+{"input": "The square root of 16 is 5", "label": "false"}
+{"input": "DNA carries genetic information", "label": "true"}
+{"input": "Mount Everest is the tallest mountain above sea level", "label": "true"}
+{"input": "Humans have three hearts", "label": "false"}
+{"input": "Sound cannot travel through a vacuum", "label": "true"}
+{"input": "The speed of light is approximately 300,000 km per second", "label": "true"}
+{"input": "Venus is the closest planet to the Sun", "label": "false"}
+{"input": "Copper is a metal", "label": "true"}
+{"input": "A leap year occurs every five years", "label": "false"}
+{"input": "Sharks are fish", "label": "true"}
+{"input": "Penguins can fly long distances", "label": "false"}
+{"input": "Photosynthesis converts sunlight into chemical energy", "label": "true"}
+{"input": "The human body has 206 bones", "label": "true"}
+{"input": "Pluto is still classified as a major planet", "label": "false"}
+{"input": "Electric current is measured in amperes", "label": "true"}
+{"input": "The chemical symbol for gold is Au", "label": "true"}
+{"input": "The Sahara is the largest ocean on Earth", "label": "false"}
+{"input": "E = mc^2 relates mass and energy", "label": "true"}
+{"input": "The Amazon River is the longest river in the world", "label": "false"}
+{"input": "Neurons transmit signals in the nervous system", "label": "true"}
+{"input": "Absolute zero is 0 degrees Celsius", "label": "false"}
+{"input": "Photosynthesis releases oxygen as a byproduct", "label": "true"}
+{"input": "The Moon produces its own light", "label": "false"}
+{"input": "Helium is lighter than air", "label": "true"}
+{"input": "The Statue of Liberty is in Paris", "label": "false"}
+{"input": "Blood is pumped by the heart", "label": "true"}
+{"input": "The Andromeda Galaxy is part of the Milky Way", "label": "false"}
+{"input": "Bees are essential pollinators for many crops", "label": "true"}
+{"input": "Diamonds are composed primarily of carbon", "label": "true"}
+{"input": "The equator passes through Antarctica", "label": "false"}
+{"input": "A byte is eight bits", "label": "true"}
+{"input": "The speed of sound is faster than the speed of light", "label": "false"}
+{"input": "Whales are mammals", "label": "true"}
+{"input": "Mars has no moons", "label": "false"}
+{"input": "Chlorophyll gives plants their green color", "label": "true"}
+{"input": "The Pythagorean theorem applies to all triangles", "label": "false"}
+{"input": "Fossil fuels are non-renewable resources", "label": "true"}
+{"input": "The human heart has four chambers", "label": "true"}
+{"input": "Lead is a good electrical conductor", "label": "false"}
+{"input": "Rainbows are formed by refraction and reflection of light", "label": "true"}
+{"input": "The boiling point of water decreases at higher elevations", "label": "true"}
+{"input": "An octopus has three hearts", "label": "true"}
+{"input": "Silver has the chemical symbol Si", "label": "false"}
+{"input": "Lightning is a discharge of static electricity", "label": "true"}
+{"input": "Humans can breathe underwater without equipment", "label": "false"}
+{"input": "Volcanoes can form new landmasses", "label": "true"}
+{"input": "Einstein developed the theory of relativity", "label": "true"}
+{"input": "The pancreas produces insulin", "label": "true"}
+{"input": "Glass is a crystalline solid", "label": "false"}

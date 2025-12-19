@@ -23,7 +23,11 @@ class Record(NamedTuple):
 
 
 def load_dataset(spec: DatasetSpec) -> List[Record]:
-    """Load a dataset described by ``DatasetSpec`` and normalize its rows."""
+    return load_dataset_with_limit(spec)
+
+
+def load_dataset_with_limit(spec: DatasetSpec, max_records: int | None = None) -> List[Record]:
+    """Load a dataset described by ``DatasetSpec`` with optional record limit."""
 
     format_hint = (spec.format or "auto").lower()
     if spec.path:
@@ -33,6 +37,8 @@ def load_dataset(spec: DatasetSpec) -> List[Record]:
         records = _load_local_dataset(path, format_hint)
     else:
         records = _load_huggingface_dataset(spec)
+    if max_records is not None and max_records >= 0:
+        return records[:max_records]
     return records
 
 

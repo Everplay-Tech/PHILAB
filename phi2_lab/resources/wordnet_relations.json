@@ -1,0 +1,82 @@
+{
+  "authority": "WordNet",
+  "version": "3.1",
+  "language": "en",
+  "semantic_relations": {
+    "taxonomy": [
+      "hypernym",
+      "hyponym",
+      "instance_hypernym",
+      "instance_hyponym"
+    ],
+    "part_whole": {
+      "meronym": [
+        "meronym_member",
+        "meronym_part",
+        "meronym_substance"
+      ],
+      "holonym": [
+        "holonym_member",
+        "holonym_part",
+        "holonym_substance"
+      ]
+    },
+    "opposition": [
+      "antonym"
+    ],
+    "verb_specific": [
+      "troponym",
+      "entailment",
+      "cause"
+    ],
+    "similarity": [
+      "similar_to",
+      "also_see"
+    ],
+    "attribute_structure": [
+      "attribute",
+      "pertainym",
+      "derivationally_related_form"
+    ],
+    "domains": {
+      "topic": [
+        "domain_topic",
+        "member_topic"
+      ],
+      "region": [
+        "domain_region",
+        "member_region"
+      ],
+      "usage": [
+        "domain_usage",
+        "member_usage"
+      ]
+    }
+  },
+  "pointers": {
+    "@": "hypernym",
+    "~": "hyponym",
+    "@i": "instance_hypernym",
+    "~i": "instance_hyponym",
+    "%m": "meronym_member",
+    "%p": "meronym_part",
+    "%s": "meronym_substance",
+    "#m": "holonym_member",
+    "#p": "holonym_part",
+    "#s": "holonym_substance",
+    "!": "antonym",
+    "*": "entailment",
+    ">": "cause",
+    "&": "similar_to",
+    "^": "also_see",
+    "=": "attribute",
+    "\\": "pertainym",
+    "+": "derivationally_related_form",
+    ";c": "domain_topic",
+    "-c": "member_topic",
+    ";r": "domain_region",
+    "-r": "member_region",
+    ";u": "domain_usage",
+    "-u": "member_usage"
+  }
+}

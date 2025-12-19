@@ -152,6 +152,71 @@ and the residual variety is the set of points/modes that only appear in the focu
   python phi2_lab/scripts/serve_geometry_dashboard.py --mock
   ```
 
+- Quick health/status checks for telemetry:
+
+  ```bash
+  # Seed a mock run and report telemetry root + run count
+  python phi2_lab/scripts/geometry_healthcheck.py
+
+  # Once the server is running, check status via HTTP
+  curl http://127.0.0.1:8000/api/geometry/status
+  ```
+
+- Epistemology probe (true/false statements) and suite runner:
+
+  ```bash
+  # Probe activations on true/false statements (defaults to mock model)
+  python phi2_lab/scripts/run_experiment.py --spec phi2_lab/config/experiments/epistemology_probe.yaml --geometry-telemetry
+
+  # Run both head ablation + epistemology probe with telemetry
+  python phi2_lab/scripts/run_telemetry_suite.py --geometry-telemetry
+  ```
+
+- Semantic relations (WordNet 3.1) — generation + probe:
+
+  ```bash
+  # Build full WordNet relations JSONL (requires nltk wordnet corpus; defaults to full dump, add --limit-per-relation for smaller)
+  python phi2_lab/scripts/build_wordnet_relations.py --output results/datasets/wordnet_relations.jsonl
+  # Example pillar-only dump (taxonomy) with cap
+  # python phi2_lab/scripts/build_wordnet_relations.py --pillar taxonomy --limit-per-relation 1000 --output results/datasets/wordnet_relations_taxonomy.jsonl
+
+  # Probe semantic relations across all layers/heads (expects the JSONL above)
+  python phi2_lab/scripts/run_experiment.py --spec phi2_lab/config/experiments/semantic_relations_probe.yaml --geometry-telemetry
+
+  # Sanity-sized probe (reduced layers/heads, smaller dataset suggested)
+  python phi2_lab/scripts/run_experiment.py --spec phi2_lab/config/experiments/semantic_relations_sanity.yaml --geometry-telemetry
+
+  # Or include in the suite run
+  python phi2_lab/scripts/run_telemetry_suite.py --geometry-telemetry
+  # Use the smaller semantic set:
+  python phi2_lab/scripts/run_telemetry_suite.py --geometry-telemetry --semantic-level sanity
+
+  # Optional runtime caps for any run_experiment invocation:
+  #   --limit-records N   --limit-layers N   --limit-heads N
+  # Presets (config/presets.yaml): --preset cpu_sanity | mps_fast | gpu_starter | gpu_expert | gpu_full
+  # Token truncation/batching: --max-length N --batch-size N
+
+  # Atlas logging is enabled by default; add optional tags/notes/snapshot:
+  #   --atlas-tags tag1,tag2 --atlas-note "finding" --atlas-snapshot /path/to/snapshot.md
+  ```
+
+- Atlas query/UI:
+
+  ```bash
+  # CLI listing/search
+  python phi2_lab/scripts/atlas_query.py --search-codes --tag wordnet
+
+  # Ingest geometry telemetry into Atlas (all runs)
+  python phi2_lab/scripts/ingest_geometry_telemetry.py --runs-root results/geometry_viz
+
+  # Serve a simple Atlas UI (read-only)
+  python phi2_lab/scripts/serve_atlas_ui.py --port 8001
+  ```
+
+## Contributor run guide
+
+See `CONTRIBUTING_RUNS.md` for step-by-step instructions by hardware level (mock sanity, real-model runs, full sweep), dataset preparation, and expected artifacts.
+
 - Capture live residual modes during Phi-2 experiments with telemetry enabled. Residual sampling runs paired base and adapter
   passes on small batches, capturing true hidden-state deltas via torch hooks:
 

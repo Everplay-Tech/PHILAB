@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from .schema import LayerTelemetry, RunIndex, RunIndexEntry, RunSummary
@@ -14,6 +15,7 @@ __all__ = [
 ]
 
 _DEFAULT_ROOT = Path("results/geometry_viz")
+logger = logging.getLogger(__name__)
 
 
 def _resolve_root(root: Path | None) -> Path:
@@ -69,7 +71,8 @@ def list_runs(root: Path | None = None) -> RunIndex:
         if candidate.exists():
             try:
                 entries.append(_build_index_entry(candidate))
-            except Exception:
+            except Exception as exc:  # pragma: no cover - defensive logging path
+                logger.warning("Skipping telemetry run at %s due to error: %s", candidate, exc)
                 continue
     return RunIndex(runs=entries)
 

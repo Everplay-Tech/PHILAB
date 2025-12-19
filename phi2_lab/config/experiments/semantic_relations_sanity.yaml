@@ -1,0 +1,37 @@
+id: "semantic_relations_wordnet_sanity"
+description: "Sanity probe for WordNet 3.1 semantic relations on a reduced layer/head set"
+type: "probe"
+
+dataset:
+  name: "wordnet_relations_sanity"
+  path: "results/datasets/wordnet_relations_sanity.jsonl"
+  format: "jsonl"
+
+layers: [0, 8, 16, 23, 31]
+heads: [0, 1, 2]
+ablation_mode: "zero"
+
+hooks:
+  - name: "layer0_self_attn"
+    point: { layer: 0, component: "self_attn" }
+  - name: "layer0_mlp"
+    point: { layer: 0, component: "mlp" }
+  - name: "layer8_self_attn"
+    point: { layer: 8, component: "self_attn" }
+  - name: "layer8_mlp"
+    point: { layer: 8, component: "mlp" }
+  - name: "layer16_self_attn"
+    point: { layer: 16, component: "self_attn" }
+  - name: "layer16_mlp"
+    point: { layer: 16, component: "mlp" }
+  - name: "layer23_self_attn"
+    point: { layer: 23, component: "self_attn" }
+  - name: "layer23_mlp"
+    point: { layer: 23, component: "mlp" }
+  - name: "layer31_self_attn"
+    point: { layer: 31, component: "self_attn" }
+  - name: "layer31_mlp"
+    point: { layer: 31, component: "mlp" }
+
+metrics:
+  - "probe"

@@ -1,0 +1,12 @@
+- [x] Add Apache 2.0 license file to repo root.
+- [x] Harden telemetry (logging on failures, status endpoint, empty-state UX) and align geometry paths.
+- [x] Full coverage probes: epistemology true/false (all layers/heads), WordNet semantic relations (full + sanity variants), suite updates.
+- [x] WordNet authority alignment: ship canonical relations/pointers, add pillarized dump script with version/metadata.
+- [x] Atlas integration: experiment logging, semantic code registration for WordNet/epistemology, optional snapshot flag.
+- [x] Contributor guidance: tiered runs, dataset prep (nltk wordnet), runtime caps documentation.
+- [x] Runtime caps: CLI flags for layer/head/record limits.
+- [x] Manifest metadata: include spec/dataset hashes, model config, and limits in run metadata.
+- [x] Tests: smoke coverage for WordNet resource/specs and dataset limits; package resources shipped.
+- [x] Add CI workflow with mock runtime smoke and build_wordnet_relations shape check (skips if corpus missing).
+- [x] Add Atlas ingestion of telemetry artifacts and richer retrieval views.
+- [x] Add config validation for paths/keys and API rate-limit monitoring.

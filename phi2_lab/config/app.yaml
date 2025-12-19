@@ -9,7 +9,31 @@ model:
   top_p: 0.95
   repetition_penalty: 1.0
   trust_remote_code: false
-  use_mock: true
+  use_mock: false
+
+# Access control for models
+# Phi-2 is always open access, other models require API keys
+access_control:
+  # Models available without API key
+  open_access_models:
+    - microsoft/phi-2
+    - phi-2
+    - phi2
+
+  # Models requiring API key (set PHILAB_ALLOWED_KEYS or PHILAB_ADMIN_KEYS env vars)
+  restricted_models:
+    - microsoft/phi-3-mini-4k-instruct
+    - microsoft/phi-3-mini-128k-instruct
+    - microsoft/phi-3-small-8k-instruct
+    - microsoft/phi-3-medium-4k-instruct
+    - meta-llama/Llama-2-7b-hf
+    - mistralai/Mistral-7B-v0.1
+
+  # Rate limits (requests per hour)
+  rate_limits:
+    unauthenticated: 100
+    authenticated: 1000
+    admin: 10000
 
 atlas:
   path: ./phi2_lab/phi2_atlas/data/atlas.db
@@ -28,4 +52,16 @@ geometry_telemetry:
   residual_max_sequences: 4
   residual_max_tokens: 512
   layers_to_sample: []
-  output_root: ./results/geometry
+  output_root: ./results/geometry_viz
+
+platform:
+  enabled: false
+  central_url: "https://api.philab.everplay.tech"
+  auto_submit: false
+  api_key: null
+  contributor_id: null
+
+geometry_viewer:
+  data_source: "local"           # local | remote
+  remote_url: "https://api.philab.everplay.tech"
+  default_dataset: "users"

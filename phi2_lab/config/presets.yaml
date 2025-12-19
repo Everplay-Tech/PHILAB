@@ -1,0 +1,41 @@
+presets:
+  mps_fast:
+    description: "Apple Silicon (M-series) fast: reduced layers/heads/records"
+    limits:
+      records: 200
+      layers: 8
+      heads: 4
+    max_length: 256
+    batch_size: 4
+  cpu_sanity:
+    description: "CPU sanity: minimal layers/heads/records"
+    limits:
+      records: 100
+      layers: 5
+      heads: 2
+    max_length: 192
+    batch_size: 2
+  gpu_full:
+    description: "GPU full sweep: no caps"
+    limits:
+      records: null
+      layers: null
+      heads: null
+    max_length: 512
+    batch_size: 8
+  gpu_starter:
+    description: "Starter GPU (single consumer GPU) with moderate caps"
+    limits:
+      records: 2000
+      layers: 16
+      heads: 16
+    max_length: 384
+    batch_size: 4
+  gpu_expert:
+    description: "Expert GPU rig (multiple/high-memory GPUs) near-full coverage"
+    limits:
+      records: null
+      layers: 32
+      heads: null
+    max_length: 512
+    batch_size: 16

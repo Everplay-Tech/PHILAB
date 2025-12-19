@@ -24,13 +24,19 @@ def main() -> None:
     print("\n## Models")
     for model in models:
         print(f"- {model.name}: {model.description}")
-    print("\n## Experiments")
+    print("\n## Experiments (grouped by type)")
+    by_type = {}
     for record in experiments:
-        preview = (record.key_findings or "").strip().split("\n", maxsplit=1)[0]
-        print(f"- {record.spec_id} ({record.type}) -> {preview}")
+        by_type.setdefault(record.type, []).append(record)
+    for typ, records in sorted(by_type.items()):
+        print(f"- {typ} ({len(records)})")
+        for record in records:
+            preview = (record.key_findings or "").strip().split("\n", maxsplit=1)[0]
+            print(f"  * {record.spec_id} -> {preview}")
     print("\n## Semantic Codes")
     for code in codes:
-        print(f"- {code.code}: {code.title} -> {code.summary}")
+        tags = ", ".join(code.tags or [])
+        print(f"- {code.code}: {code.title} -> {code.summary} [{tags}]")
 
 
 if __name__ == "__main__":

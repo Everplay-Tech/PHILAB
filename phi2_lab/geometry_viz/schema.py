@@ -1,7 +1,7 @@
 """Pydantic models describing adapter geometry telemetry."""
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -166,6 +166,19 @@ class RunTimelinePoint(BaseModel):
     adapter_weight_norm: Optional[float] = None
     effective_rank: Optional[float] = None
     delta_loss_estimate: Optional[float] = None
+
+
+class ModelAlignment(BaseModel):
+    """Alignment information between source and target models."""
+
+    source_model: str
+    target_model: str
+    layer_map: Dict[int, int] = Field(default_factory=dict)
+    layer_scores: Dict[int, float] = Field(default_factory=dict)
+    mode_map: Dict[str, str] = Field(default_factory=dict)
+    mode_scores: Dict[str, float] = Field(default_factory=dict)
+    residual_variety_points: List[Tuple[float, float]] = Field(default_factory=list)
+    explained_points: List[Tuple[float, float]] = Field(default_factory=list)
 
 
 class RunSummary(BaseModel):

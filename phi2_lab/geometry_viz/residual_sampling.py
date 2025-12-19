@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Sequence
 
 import numpy as np
+import logging
 
 try:  # pragma: no cover - optional dependency guard
     import torch
@@ -23,6 +24,7 @@ except ModuleNotFoundError:  # pragma: no cover - allow import when torch unavai
 
 ResidualSampler = Callable[[int], tuple[np.ndarray, np.ndarray, Sequence[str] | None] | None]
 TextBatchProvider = Callable[[], Sequence[str]]
+logger = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
@@ -314,7 +316,8 @@ def build_residual_sampler_for_model_and_data(
             base_context=base_context,
             adapter_context=adapter_context,
         )
-    except Exception:
+    except Exception as exc:  # pragma: no cover - defensive logging path
+        logger.warning("Residual sampler unavailable; falling back without residual modes: %s", exc)
         return None
 
 

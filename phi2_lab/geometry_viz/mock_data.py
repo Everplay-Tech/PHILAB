@@ -38,7 +38,7 @@ class MockTelemetryConfig:
     """Configuration for reproducible mock telemetry generation."""
 
     adapter_ids: Sequence[str] = ("demo_adapter_a", "demo_adapter_b")
-    num_layers_range: tuple[int, int] = (8, 12)
+    num_layers_range: tuple[int, int] = (32, 32)
     timeline_steps: int = 12
     residual_modes: int = 3
     hidden_dim: int = 24
@@ -120,13 +120,30 @@ class MockTelemetryGenerator:
 
         alignment = None
         if num_layers > 0:
+            # Generate mode mappings for each layer's modes
+            mode_map = {}
+            mode_scores = {}
+            for layer in layers:
+                for mode in layer.residual_modes:
+                    key = f"{layer.layer_index}:{mode.mode_index}"
+                    # ~70% of modes have a mapping, rest are residual
+                    if self._rng.random() > 0.3:
+                        # Map to same layer/mode in target (with some variation)
+                        target_layer = layer.layer_index + int(self._rng.integers(-1, 2))
+                        target_layer = max(0, min(num_layers - 1, target_layer))
+                        mode_map[key] = f"{target_layer}:{mode.mode_index}"
+                        mode_scores[key] = float(0.5 + self._rng.random() * 0.5)  # 50-100% score
+                    else:
+                        # Residual mode (no mapping) - still give it a low score
+                        mode_scores[key] = float(self._rng.random() * 0.3)  # 0-30% score
+
             alignment = ModelAlignment(
                 source_model="phi-2",
                 target_model="phi-3",
                 layer_map={i: i for i in range(num_layers)},
-                layer_scores={i: self._rng.random() for i in range(num_layers)},
-                mode_map={},
-                mode_scores={},
+                layer_scores={i: float(self._rng.random()) for i in range(num_layers)},
+                mode_map=mode_map,
+                mode_scores=mode_scores,
                 residual_variety_points=[(self._rng.random() * 4 - 2, self._rng.random() * 4 - 2) for _ in range(20)],
                 explained_points=[(self._rng.random() * 4 - 2, self._rng.random() * 4 - 2) for _ in range(30)],
             )
@@ -142,7 +159,6 @@ class MockTelemetryGenerator:
             source_model_name="phi-2",
             target_model_name="phi-3",
             alignment_info=alignment,
-        )
         )
 
     # -----------------------------

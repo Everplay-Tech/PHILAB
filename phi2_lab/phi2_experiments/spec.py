@@ -248,6 +248,7 @@ class ExperimentSpec:
     heads: List[int] | Literal["all"]
     ablation_mode: str
     metrics: List[str] = field(default_factory=list)
+    adapters: List[str] = field(default_factory=list)
     hooks: List[HookDefinition] = field(default_factory=list)
     ablations: List[AblationSpec] = field(default_factory=list)
     interventions: List[InterventionSpec] = field(default_factory=list)
@@ -279,6 +280,7 @@ class ExperimentSpec:
             "heads": self.heads if self.heads == "all" else list(self.heads),
             "ablation_mode": self.ablation_mode,
             "metrics": list(self.metrics),
+            "adapters": list(self.adapters),
             "hooks": [hook.to_dict() for hook in self.hooks],
             "ablations": [ablation.to_dict() for ablation in self.ablations],
             "interventions": [intervention.to_dict() for intervention in self.interventions],
@@ -315,6 +317,9 @@ class ExperimentSpec:
         geometry_config = None
         if "geometry" in data and data.get("geometry") is not None:
             geometry_config = GeometryConfig.from_dict(data["geometry"])
+        adapters = data.get("adapters", [])
+        if not isinstance(adapters, list):
+            raise TypeError("'adapters' must be a list of adapter IDs")
         return cls(
             id=data["id"],
             description=data.get("description", ""),
@@ -324,6 +329,7 @@ class ExperimentSpec:
             heads=heads,
             ablation_mode=data.get("ablation_mode", data.get("parameters", {}).get("mode", "zero")),
             metrics=list(data.get("metrics", [])),
+            adapters=[str(adapter_id) for adapter_id in adapters],
             hooks=hooks,
             ablations=ablations,
             interventions=interventions,

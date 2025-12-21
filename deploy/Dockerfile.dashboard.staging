@@ -1,0 +1,9 @@
+FROM nginx:1.27-alpine
+
+ENV PORT=8080
+
+COPY deploy/nginx-dashboard.staging.conf /etc/nginx/templates/default.conf.template
+COPY deploy/dashboard-config.staging.js /usr/share/nginx/html/config.js
+COPY phi2_lab/geometry_viz/static/ /usr/share/nginx/html/
+
+EXPOSE 8080

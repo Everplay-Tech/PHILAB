@@ -8,6 +8,7 @@ lenses:
     target_modules: [attn, mlp]
     rank: 8
     alpha: 16
+    target_layers: []
     target_tasks:
       - planning
       - risk_mitigation
@@ -27,6 +28,7 @@ lenses:
     target_modules: [attn, mlp]
     rank: 8
     alpha: 16
+    target_layers: []
     target_tasks:
       - general_assistance
     primary_metrics:
@@ -45,6 +47,7 @@ lenses:
     target_modules: [attn]
     rank: 4
     alpha: 8
+    target_layers: []
     target_tasks:
       - interpretability
       - roadmap_design
@@ -62,6 +65,7 @@ lenses:
     target_modules: [mlp]
     rank: 8
     alpha: 16
+    target_layers: []
     target_tasks:
       - code_generation
       - debugging
@@ -80,6 +84,7 @@ lenses:
     target_modules: [attn, mlp]
     rank: 6
     alpha: 12
+    target_layers: []
     target_tasks:
       - summarization
       - documentation
@@ -98,6 +103,7 @@ lenses:
     target_modules: [attn, mlp]
     rank: 8
     alpha: 16
+    target_layers: []
     target_tasks:
       - compression
       - retrieval
@@ -116,6 +122,7 @@ lenses:
     target_modules: [attn, mlp]
     rank: 12
     alpha: 24
+    target_layers: []
     target_tasks:
       - governance
       - safety

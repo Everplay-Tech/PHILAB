@@ -20,7 +20,7 @@ def _save_mock_run(run_id: str) -> Path:
 
 def _print_status(root: Path | None = None) -> None:
     runs = telemetry_store.list_runs(root=root)
-    resolved_root = telemetry_store._resolve_root(root)  # type: ignore[attr-defined]
+    resolved_root = telemetry_store.resolve_root(root)
     print(f"[geometry] telemetry root: {resolved_root}")
     print(f"[geometry] run count: {len(runs.runs)}")
     if runs.runs:

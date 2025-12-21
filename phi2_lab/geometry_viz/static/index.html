@@ -20,7 +20,7 @@
         <select id="primaryRunSelect"></select>
         <label for="comparisonRunSelect">B:</label>
         <select id="comparisonRunSelect"></select>
-        <label><input type="checkbox" id="mockToggle" checked> Mock</label>
+        <label><input type="checkbox" id="mockToggle"> Mock</label>
       </div>
       <div class="data-controls">
         <label for="dataSourceSelect">Data:</label>
@@ -34,9 +34,10 @@
           <option value="communities">Community Curated</option>
         </select>
         <label for="remoteUrlInput">Platform:</label>
-        <input id="remoteUrlInput" type="text" placeholder="https://api.philab.everplay.tech">
+        <input id="remoteUrlInput" type="text" placeholder="https://api.technopoets.net">
         <label for="apiKeyInput">API Key:</label>
         <input id="apiKeyInput" type="password" placeholder="optional for mock">
+        <label><input type="checkbox" id="rememberKeyToggle"> Remember key</label>
       </div>
     </div>
   </header>
@@ -78,10 +79,40 @@
         <div class="chip ghost" id="geodesicBtn">Geodesics</div>
         <div class="chip ghost" id="sheafBtn">Sheaf fields</div>
         <div class="chip ghost" id="chartBtn">Chart atlas</div>
+        <div class="chip ghost" id="webgl3dBtn">3D WebGL</div>
+        <div class="chip ghost" id="plotly3dBtn">3D Plotly</div>
+        <div class="chip ghost" id="export3dBtn">Export PNG</div>
+        <div class="chip ghost" id="reset3dBtn">Reset Camera</div>
+        <div class="chip ghost" id="export3dCsvBtn">Export CSV</div>
+        <div class="three-controls">
+          <label for="adapterGroupSelect">Adapter Group:</label>
+          <select id="adapterGroupSelect"></select>
+          <label for="csvScopeSelect">CSV Scope:</label>
+          <select id="csvScopeSelect">
+            <option value="current">Focused Run</option>
+            <option value="group">Adapter Group</option>
+            <option value="all">All Runs</option>
+          </select>
+          <label><input type="checkbox" id="trailToggle" checked> Trails</label>
+          <label><input type="checkbox" id="trailColorModeToggle"> Trail = Adapter</label>
+          <label for="trailColorInput">Trail Color:</label>
+          <input type="color" id="trailColorInput" value="#fbbf24" aria-label="Trail color">
+          <label for="colorModeSelect">Color:</label>
+          <select id="colorModeSelect">
+            <option value="layer">Layer</option>
+            <option value="adapter">Adapter</option>
+          </select>
+        </div>
         <div id="selectedModeMeta"></div>
       </div>
       <div id="plotArea">
         <svg id="scatterPlot" viewBox="0 0 400 400"></svg>
+        <div id="webglContainer" class="three-container hidden"></div>
+        <div id="plotlyContainer" class="plotly-container hidden"></div>
+        <div id="threeMessage" class="legend hidden"></div>
+        <div id="threeLegend" class="legend hidden"></div>
+        <div id="threeLegendScale" class="legend hidden"></div>
+        <div id="threeTooltip" class="tooltip hidden"></div>
       </div>
       <div class="legend" id="algebraLegend">
         <strong>Hyperbolic Geometry Atlas V3.</strong> Explore curved manifolds with Poincare disks, geodesic reasoning chains, sheaf fields for attention structures, and multi-chart atlases. Switch modes to navigate different geometric lenses on transformer thought spaces.
@@ -120,6 +151,8 @@
       </div>
     </aside>
   </main>
-  <script src="app2.js?v=5"></script>
+  <script src="config.js?v=1"></script>
+  <script type="module" src="bootstrap.js?v=1"></script>
+  <script defer src="app2.js?v=8"></script>
 </body>
 </html>

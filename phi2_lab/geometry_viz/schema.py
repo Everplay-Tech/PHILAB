@@ -102,6 +102,10 @@ class ResidualMode(BaseModel):
         default_factory=list,
         description="2D projection coordinates for sample residual points.",
     )
+    projection_coords_3d: List[Tuple[float, float, float]] = Field(
+        default_factory=list,
+        description="3D projection coordinates for sample residual points.",
+    )
     description: Optional[str] = Field(
         default=None, description="Optional semantic label for the mode."
     )

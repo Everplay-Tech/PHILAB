@@ -18,7 +18,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = os.environ.get("PHILAB_DATABASE_URL", get_database_url())
+    url = get_database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -31,7 +31,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    config.set_main_option("sqlalchemy.url", os.environ.get("PHILAB_DATABASE_URL", get_database_url()))
+    config.set_main_option("sqlalchemy.url", get_database_url())
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

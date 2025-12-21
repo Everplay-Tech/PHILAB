@@ -299,6 +299,7 @@ aside, section {
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .chip {
@@ -316,10 +317,110 @@ aside, section {
   color: #7b8ba8;
 }
 
+.hidden {
+  display: none !important;
+}
+
 #selectedModeMeta {
-  margin-left: auto;
+  margin-left: 0;
   font-size: 12px;
   color: #cbd5e1;
+}
+
+.three-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.three-controls label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.three-controls select {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.three-controls input[type="checkbox"] {
+  accent-color: #38bdf8;
+}
+
+.three-controls input[type="color"] {
+  width: 36px;
+  height: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  padding: 0;
+}
+
+.three-container,
+.plotly-container {
+  width: 100%;
+  height: 420px;
+  border-radius: 16px;
+  background: radial-gradient(circle at top, rgba(56, 189, 248, 0.1), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+#threeLegend {
+  margin-top: 8px;
+}
+
+#threeLegendScale {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+#threeLegendScale .scale-bar {
+  height: 8px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #38bdf8, #22c55e, #f97316);
+  margin-top: 6px;
+}
+
+#threeLegendScale .adapter-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px 10px;
+  margin-top: 6px;
+}
+
+#threeLegendScale .adapter-swatch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#threeLegendScale .adapter-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+}
+
+#threeTooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #e2e8f0;
+  z-index: 5;
+}
+
+.hidden {
+  display: none;
 }
 
 .focus-chip {

@@ -8,6 +8,7 @@ from pathlib import Path
 from .schema import LayerTelemetry, RunIndex, RunIndexEntry, RunSummary
 
 __all__ = [
+    "resolve_root",
     "save_run_summary",
     "load_run_summary",
     "list_runs",
@@ -22,6 +23,11 @@ def _resolve_root(root: Path | None) -> Path:
     return (root or _DEFAULT_ROOT).expanduser().resolve()
 
 
+def resolve_root(root: Path | None = None) -> Path:
+    """Public helper to resolve the telemetry root."""
+    return _resolve_root(root)
+
+
 def save_run_summary(run: RunSummary, root: Path | None = None) -> Path:
     """Persist a run summary to ``run.json`` inside the run directory."""
 
@@ -30,7 +36,9 @@ def save_run_summary(run: RunSummary, root: Path | None = None) -> Path:
     run_dir.mkdir(parents=True, exist_ok=True)
     payload = run.model_dump()
     output_path = run_dir / "run.json"
-    output_path.write_text(json.dumps(payload, indent=2))
+    tmp_path = run_dir / "run.json.tmp"
+    tmp_path.write_text(json.dumps(payload, indent=2))
+    tmp_path.replace(output_path)
     return output_path
 
 

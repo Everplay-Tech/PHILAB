@@ -4,12 +4,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RegisterRequest(BaseModel):
     username: str
     email: Optional[str] = None
+    invite_token: Optional[str] = None
 
 
 class RegisterResponse(BaseModel):
@@ -35,12 +36,22 @@ class TaskDetail(TaskSummary):
     spec_yaml: str
 
 
+class ResultMetadata(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    preset: Optional[str] = None
+    hardware: Optional[Dict[str, Any]] = None
+    duration: Optional[int] = None
+    spec_hash: Optional[str] = None
+    submitted_at: Optional[str] = None
+
+
 class ResultSubmission(BaseModel):
     task_id: str
     result_summary: Dict[str, Any]
     result_full: Dict[str, Any]
     telemetry_data: Optional[Dict[str, Any]] = None
-    metadata: Dict[str, Any]
+    metadata: ResultMetadata
 
 
 class ResultSummary(BaseModel):

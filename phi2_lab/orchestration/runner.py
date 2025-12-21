@@ -213,7 +213,7 @@ class OrchestrationRunner:
         model = resources.model
         if model is None:
             raise RuntimeError("Phi-2 model resources are unavailable.")
-        return AdapterManager.from_config(model, lens_specs)
+        return AdapterManager.from_config(model, lens_specs, model_manager=self.model_manager)
 
     def _build_agent_config(
         self,

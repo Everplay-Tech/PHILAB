@@ -279,6 +279,17 @@ class Phi2ModelManager:
         self._resources = Phi2Resources(model=model, tokenizer=tokenizer, device=device, config=self.cfg)
         return self._resources
 
+    def replace_model(self, model: nn.Module) -> None:
+        """Replace the cached model instance (used when adapters wrap the base model)."""
+        if self._resources is None:
+            return
+        self._resources = Phi2Resources(
+            model=model,
+            tokenizer=self._resources.tokenizer,
+            device=self._resources.device,
+            config=self._resources.config,
+        )
+
     # pylint: disable=too-many-arguments
     def generate(
         self,

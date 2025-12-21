@@ -75,7 +75,12 @@ docs = [
 ]
 
 all = [
-    "phi2-lab[dev,docs,platform]",
+    "phi2-lab[dev,docs,platform,adapters]",
+]
+
+adapters = [
+    "peft>=0.9.0",
+    "accelerate>=0.25.0",
 ]
 
 [project.urls]

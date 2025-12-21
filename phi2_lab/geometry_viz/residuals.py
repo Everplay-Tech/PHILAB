@@ -74,6 +74,13 @@ def compute_residual_modes(
     total_variance = float(np.var(centered, axis=0, ddof=1).sum())
     modes: List[ResidualMode] = []
 
+    if scores.shape[1] >= 3:
+        projected_coords_3d = scores[:, :3]
+    elif scores.shape[1] == 2:
+        projected_coords_3d = np.column_stack([scores[:, 0], scores[:, 1], np.zeros_like(scores[:, 0])])
+    else:
+        projected_coords_3d = np.column_stack([scores[:, 0], np.zeros_like(scores[:, 0]), np.zeros_like(scores[:, 0])])
+
     for idx in range(k):
         projections = scores[:, idx]
         token_examples = _select_token_examples(projections, token_strings, top_n_examples)
@@ -85,6 +92,9 @@ def compute_residual_modes(
                 variance_explained=variance_fraction,
                 token_examples=token_examples,
                 projection_coords=[(float(x), float(y)) for x, y in scores[:, :2]],
+                projection_coords_3d=[
+                    (float(x), float(y), float(z)) for x, y, z in projected_coords_3d
+                ],
                 description=None,
             )
         )

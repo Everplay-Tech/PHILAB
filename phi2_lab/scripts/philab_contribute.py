@@ -36,6 +36,8 @@ def _api_request(method: str, url: str, payload: dict | None = None, api_key: st
 def register(args: argparse.Namespace) -> None:
     url = args.platform_url.rstrip("/") + "/api/platform/register"
     payload = {"username": args.username, "email": args.email}
+    if args.invite_token:
+        payload["invite_token"] = args.invite_token
     resp = _api_request("POST", url, payload)
     config = _load_config()
     config.update({
@@ -51,6 +53,10 @@ def register(args: argparse.Namespace) -> None:
 
 
 def list_tasks(args: argparse.Namespace) -> None:
+    config = _load_config()
+    api_key = config.get("api_key")
+    if not api_key:
+        raise SystemExit("Missing API key. Run register first.")
     url = args.platform_url.rstrip("/") + "/api/platform/tasks"
     params = {}
     if args.status:
@@ -59,7 +65,7 @@ def list_tasks(args: argparse.Namespace) -> None:
         params["priority"] = str(args.priority)
     if params:
         url += "?" + parse.urlencode(params)
-    resp = _api_request("GET", url)
+    resp = _api_request("GET", url, api_key=api_key)
     for task in resp:
         print(f"{task['id']} | {task['name']} | {task['status']} | {task['runs_completed']}/{task['runs_needed']}")
 
@@ -71,7 +77,7 @@ def run_task(args: argparse.Namespace) -> None:
     if not api_key:
         raise SystemExit("Missing API key. Run register first.")
     task_url = platform_url.rstrip("/") + f"/api/platform/tasks/{args.task_id}"
-    task = _api_request("GET", task_url)
+    task = _api_request("GET", task_url, api_key=api_key)
     spec_dir = Path.home() / ".philab" / "tasks"
     spec_dir.mkdir(parents=True, exist_ok=True)
     spec_path = spec_dir / f"{args.task_id}.yaml"
@@ -109,10 +115,14 @@ def my_runs(args: argparse.Namespace) -> None:
 
 
 def leaderboard(args: argparse.Namespace) -> None:
+    config = _load_config()
+    api_key = config.get("api_key")
+    if not api_key:
+        raise SystemExit("Missing API key. Run register first.")
     url = args.platform_url.rstrip("/") + "/api/platform/contributors"
     params = {"sort_by": args.sort_by, "limit": str(args.limit)}
     url += "?" + parse.urlencode(params)
-    resp = _api_request("GET", url)
+    resp = _api_request("GET", url, api_key=api_key)
     for idx, contributor in enumerate(resp, start=1):
         print(f"{idx}. {contributor['username']} | runs={contributor['runs_completed']} | compute={contributor['compute_donated_seconds']}s")
 
@@ -125,6 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     register_cmd = subparsers.add_parser("register", help="Register as a contributor.")
     register_cmd.add_argument("--username", required=True)
     register_cmd.add_argument("--email", default=None)
+    register_cmd.add_argument("--invite-token", default=None, help="Invite token if registration is gated.")
     register_cmd.set_defaults(func=register)
 
     tasks_cmd = subparsers.add_parser("list-tasks", help="List available tasks.")

@@ -102,32 +102,34 @@ class ExperimentRunner:
     def run(self, spec: ExperimentSpec) -> ExperimentResult:
         logger.info("Running experiment %s of type %s", spec.id, spec.type.value)
         self._record_geometry(step=0, spec=spec)
-        if spec.type == ExperimentType.HEAD_ABLATION:
-            summary, per_head_metrics, metadata, npz_payloads = self._run_head_ablation(spec)
-        elif spec.type == ExperimentType.PROBE:
-            summary, per_head_metrics, metadata, npz_payloads = self._run_probe(spec)
-        elif spec.type == ExperimentType.DIRECTION_INTERVENTION:
-            summary, per_head_metrics, metadata, npz_payloads = self._run_direction_intervention(spec)
-        elif spec.type == ExperimentType.GEOMETRY:
-            summary, per_head_metrics, metadata, npz_payloads = self._run_geometry(spec)
-        else:
-            raise NotImplementedError(f"Experiment type {spec.type} is not implemented yet")
+        try:
+            if spec.type == ExperimentType.HEAD_ABLATION:
+                summary, per_head_metrics, metadata, npz_payloads = self._run_head_ablation(spec)
+            elif spec.type == ExperimentType.PROBE:
+                summary, per_head_metrics, metadata, npz_payloads = self._run_probe(spec)
+            elif spec.type == ExperimentType.DIRECTION_INTERVENTION:
+                summary, per_head_metrics, metadata, npz_payloads = self._run_direction_intervention(spec)
+            elif spec.type == ExperimentType.GEOMETRY:
+                summary, per_head_metrics, metadata, npz_payloads = self._run_geometry(spec)
+            else:
+                raise NotImplementedError(f"Experiment type {spec.type} is not implemented yet")
 
-        # Attach manifest
-        metadata[MANIFEST_KEY] = self._build_manifest(spec)
+            # Attach manifest
+            metadata[MANIFEST_KEY] = self._build_manifest(spec)
 
-        result = ExperimentResult(
-            spec=spec,
-            timestamp=datetime.now(UTC).replace(microsecond=0),
-            aggregated_metrics=summary,
-            per_head_metrics=per_head_metrics,
-            metadata=metadata,
-        )
-        log_experiment_result(result, npz_payloads=npz_payloads)
-        self._record_atlas_experiment(result)
-        self._record_geometry(step=1, spec=spec)
-        self._finalize_geometry()
-        return result
+            result = ExperimentResult(
+                spec=spec,
+                timestamp=datetime.now(UTC).replace(microsecond=0),
+                aggregated_metrics=summary,
+                per_head_metrics=per_head_metrics,
+                metadata=metadata,
+            )
+            log_experiment_result(result, npz_payloads=npz_payloads)
+            self._record_atlas_experiment(result)
+            self._record_geometry(step=1, spec=spec)
+            return result
+        finally:
+            self._finalize_geometry()
 
     def _run_head_ablation(
         self, spec: ExperimentSpec
@@ -844,14 +846,18 @@ class ExperimentRunner:
         recorder = self.geometry_recorder
         if recorder is None:
             return
-        path = finalize_geometry_run(recorder)
-        if self.atlas_writer is not None and self._geometry_run_id:
-            try:
-                from phi2_lab.scripts.ingest_geometry_telemetry import ingest_run
-                root = self.geometry_settings.output_root or Path("results/geometry_viz")
-                ingest_run(self._geometry_run_id, self.atlas_writer, root=root)
-            except Exception as exc:
-                logger.warning("Failed to ingest geometry telemetry into Atlas: %s", exc)
+        finalize_geometry_run(recorder)
+        try:
+            if self.atlas_writer is not None and self._geometry_run_id:
+                try:
+                    from phi2_lab.scripts.ingest_geometry_telemetry import ingest_run
+                    root = self.geometry_settings.output_root or Path("results/geometry_viz")
+                    ingest_run(self._geometry_run_id, self.atlas_writer, root=root)
+                except Exception as exc:
+                    logger.warning("Failed to ingest geometry telemetry into Atlas: %s", exc)
+        finally:
+            self._geometry_run_started = False
+            self._geometry_run_id = None
 
     def _record_atlas_experiment(self, result: ExperimentResult) -> None:
         if self.atlas_writer is None:
@@ -924,6 +930,7 @@ class ExperimentRunner:
             "layer_limit": self.layer_limit,
             "head_limit": self.head_limit,
         }
+        manifest["adapters"] = list(self.adapter_ids)
         return manifest
 
     def _prepare_residual_sampler(self, records: Sequence[Record], tokenizer: Any, model: Any) -> None:
@@ -972,7 +979,7 @@ def load_and_run(
         atlas_writer=atlas_writer,
         atlas_storage=atlas_storage,
         semantic_tags=semantic_tags,
-        adapter_ids=adapter_ids,
+        adapter_ids=adapter_ids or spec.adapters or None,
     )
     # Apply limits and track sources
     runner.record_limit = record_limit

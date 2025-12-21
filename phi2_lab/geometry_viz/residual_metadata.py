@@ -25,6 +25,14 @@ def _projection_cloud(sample_count: int, seed: int) -> List[tuple[float, float]]
     return [(float(x), float(y)) for x, y in coords]
 
 
+def _projection_cloud_3d(sample_count: int, seed: int) -> List[tuple[float, float, float]]:
+    if sample_count <= 0:
+        return []
+    rng = np.random.default_rng(seed=seed * 17)
+    coords = rng.normal(scale=0.45, size=(sample_count, 3))
+    return [(float(x), float(y), float(z)) for x, y, z in coords]
+
+
 def validate_residual_metadata(
     residual_modes: Sequence[ResidualMode], sample_count: int
 ) -> None:
@@ -45,6 +53,8 @@ def validate_residual_metadata(
         raise ValueError("Residual sample count must be positive when modes are present.")
 
     seen_indices: set[int] = set()
+    has_any_2d = False
+    has_any_3d = False
     for mode in residual_modes:
         if mode.mode_index in seen_indices:
             raise ValueError("Residual mode indices must be unique within a layer.")
@@ -55,10 +65,30 @@ def validate_residual_metadata(
             raise ValueError(
                 "Projection coordinate count must be zero or match residual_sample_count."
             )
+        if coord_count:
+            has_any_2d = True
 
-        if sample_count and coord_count == 0:
+        coord_3d_count = len(mode.projection_coords_3d)
+        if coord_3d_count not in {0, sample_count}:
             raise ValueError(
-                "Projection coordinates are required when residual samples are present."
+                "3D projection coordinate count must be zero or match residual_sample_count."
+            )
+        if coord_3d_count:
+            has_any_3d = True
+
+        if coord_count and coord_3d_count == 0:
+            raise ValueError("3D projection coordinates must accompany 2D coordinates when provided.")
+        if coord_3d_count and coord_count == 0:
+            raise ValueError("2D projection coordinates must accompany 3D coordinates when provided.")
+
+    if sample_count and residual_modes:
+        if not has_any_2d:
+            raise ValueError(
+                "At least one residual mode must include 2D projection coordinates when samples are present."
+            )
+        if not has_any_3d:
+            raise ValueError(
+                "At least one residual mode must include 3D projection coordinates when samples are present."
             )
 
 
@@ -86,6 +116,7 @@ def generate_residual_modes(
     energies = rng.uniform(0.05, 0.25, size=max(1, mode_count))
     total_energy = float(energies.sum()) or 1.0
     projection_coords = _projection_cloud(sample_count, seed=rng_seed * 13)
+    projection_coords_3d = _projection_cloud_3d(sample_count, seed=rng_seed * 13)
 
     modes: List[ResidualMode] = []
     for mode_idx, energy in enumerate(energies):
@@ -101,6 +132,7 @@ def generate_residual_modes(
                 variance_explained=variance_fraction,
                 token_examples=token_examples,
                 projection_coords=list(projection_coords),
+                projection_coords_3d=list(projection_coords_3d),
                 description=f"{description_prefix} {mode_idx} for layer {layer_index}",
             )
         )

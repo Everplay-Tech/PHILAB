@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from phi2_lab.phi2_core.config import load_app_config
 from phi2_lab.phi2_core.model_manager import Phi2ModelManager
+from phi2_lab.phi2_core.adapter_manager import AdapterManager
 from phi2_lab.geometry_viz.integration import GeometryTelemetrySettings, build_geometry_recorder
 from phi2_lab.phi2_experiments.runner import load_and_run
 from phi2_lab.phi2_atlas.storage import AtlasStorage
@@ -33,6 +34,18 @@ def parse_args() -> argparse.Namespace:
         "--spec",
         default=default_spec,
         help="Path to ExperimentSpec YAML file (defaults to the bundled head_ablation.yaml)",
+    )
+    parser.add_argument(
+        "--adapters",
+        type=str,
+        default=None,
+        help="Comma-separated adapter IDs from config/lenses.yaml to activate for this run.",
+    )
+    parser.add_argument(
+        "--lenses-path",
+        type=str,
+        default=None,
+        help="Override path to lenses.yaml for adapter definitions.",
     )
     parser.add_argument(
         "--geometry-telemetry",
@@ -155,6 +168,28 @@ def parse_args() -> argparse.Namespace:
         help="Task/prompt card ID for submission context.",
     )
     return parser.parse_args()
+
+
+def _resolve_lens_cfg(root: Path, override: str | None) -> Path:
+    if override:
+        return Path(override)
+    candidates = [
+        root.parent / "configs" / "lenses.yaml",
+        root / "configs" / "lenses.yaml",
+        root / "config" / "lenses.yaml",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError("Unable to locate lenses.yaml in configs/ or config/ directories.")
+
+
+def _load_lens_specs(path: Path) -> dict:
+    data = load_yaml_data(path) or {}
+    raw_lenses = data.get("lenses", {})
+    if not isinstance(raw_lenses, dict):
+        raise ValueError(f"Expected 'lenses' mapping in {path}.")
+    return raw_lenses
 
 
 def _compute_spec_hash(path: Path) -> str:
@@ -287,10 +322,27 @@ def main() -> None:
     )
     geometry_recorder = build_geometry_recorder(telemetry_settings)
     atlas_writer = None
+    atlas_storage = None
     if not args.atlas_disable:
         atlas_storage = AtlasStorage(app_cfg.atlas.resolve_path(root))
         atlas_writer = AtlasWriter(atlas_storage)
     model_manager = Phi2ModelManager.get_instance(app_cfg.model)
+    adapter_ids = [item.strip() for item in (args.adapters or "").split(",") if item.strip()]
+    if adapter_ids:
+        lens_cfg_path = _resolve_lens_cfg(root, args.lenses_path)
+        lens_specs = _load_lens_specs(lens_cfg_path)
+        resources = model_manager.load()
+        if resources.model is None:
+            raise RuntimeError("Phi-2 model resources are unavailable for adapter activation.")
+        adapter_manager = AdapterManager.from_config(
+            resources.model,
+            lens_specs,
+            model_manager=model_manager,
+        )
+        adapter_manager.activate(adapter_ids)
+    semantic_tags = [t.strip() for t in (args.atlas_tags or "").split(",") if t.strip()] if args.atlas_tags else []
+    if adapter_ids:
+        semantic_tags.extend([f"adapter:{adapter_id}" for adapter_id in adapter_ids])
     result = load_and_run(
         args.spec,
         model_manager,
@@ -303,7 +355,8 @@ def main() -> None:
         head_limit=preset_limits["heads"],
         max_length=preset_max_length,
         batch_size=preset_batch_size,
-        semantic_tags=[t.strip() for t in (args.atlas_tags or "").split(",") if t.strip()] if args.atlas_tags else None,
+        semantic_tags=semantic_tags or None,
+        adapter_ids=adapter_ids or None,
     )
     saved_path = result.artifact_paths.get("result_json")
     if saved_path:
@@ -367,6 +420,7 @@ def main() -> None:
             "duration": duration,
             "spec_hash": spec_hash,
             "submitted_at": datetime.utcnow().isoformat(timespec="seconds"),
+            "adapters": adapter_ids,
         }
         _submit_results(
             submit_to=submit_to,

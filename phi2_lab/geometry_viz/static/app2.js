@@ -1,5 +1,18 @@
 const SIDES = { PRIMARY: 'primary', COMPARISON: 'comparison' };
 
+const RUNTIME_CONFIG = (typeof window !== 'undefined' && window.__PHILAB_CONFIG__)
+  ? window.__PHILAB_CONFIG__
+  : {};
+
+const DEFAULT_REMOTE_URL = RUNTIME_CONFIG.apiBaseUrl || 'https://api.technopoets.net';
+const LOCK_API_BASE_URL = RUNTIME_CONFIG.lockApiBaseUrl === true;
+const DEFAULT_DATA_SOURCE = RUNTIME_CONFIG.defaultDataSource || 'remote';
+const DEFAULT_DATASET = RUNTIME_CONFIG.defaultDataset || 'communities';
+const ALLOW_LOCAL_MODE = RUNTIME_CONFIG.allowLocalMode !== false;
+const ALLOW_MOCK_TOGGLE = RUNTIME_CONFIG.allowMockToggle !== false;
+const ENABLE_PLOTLY_3D = RUNTIME_CONFIG.enablePlotly3d === true;
+const REMEMBER_KEY_DEFAULT = RUNTIME_CONFIG.rememberKeyDefault === true;
+
 const state = {
   runs: [],
   summaries: {},
@@ -8,25 +21,78 @@ const state = {
   focus: SIDES.PRIMARY,
   selectedLayer: { [SIDES.PRIMARY]: null, [SIDES.COMPARISON]: null },
   selectedMode: { [SIDES.PRIMARY]: null, [SIDES.COMPARISON]: null },
-  useMock: true,
-  dataSource: 'local', // local | remote
+  useMock: false,
+  dataSource: DEFAULT_DATA_SOURCE, // local | remote
   remote: {
     url: '',
     apiKey: '',
-    dataset: 'users',
+    dataset: DEFAULT_DATASET,
   },
   atlasMode: 'single',  // 'single', 'dual', 'atlas'
-  viewMode: 'residual',  // 'residual', 'geodesic', 'sheaf', 'chart'
+  viewMode: 'residual',  // 'residual', 'geodesic', 'sheaf', 'chart', 'webgl3d', 'plotly3d'
+  adapterGroup: 'all',
+  showTrails: true,
+  colorMode: 'layer',
+  trailColor: '#fbbf24',
+  trailColorMode: 'custom',
+  csvScope: 'current',
 };
+
+let webglScene = null;
+let webglRenderer = null;
+let webglCamera = null;
+let webglPoints = null;
+let webglTrails = null;
+let webglControls = null;
+let webglRaycaster = null;
+let webglHoverIndex = null;
 
 function apiUrl(path) {
   const mockParam = state.useMock ? '?mock=1' : '';
   return `${path}${mockParam}`;
 }
 
+function _getRememberKeyPreference() {
+  const stored = localStorage.getItem('philab_remember_key');
+  if (stored === null) return REMEMBER_KEY_DEFAULT;
+  return stored === 'true';
+}
+
+function _setRememberKeyPreference(enabled) {
+  localStorage.setItem('philab_remember_key', enabled ? 'true' : 'false');
+}
+
+function _loadApiKey({ rememberKey }) {
+  // Back-compat migration: older builds stored the key in localStorage without a remember toggle.
+  const legacy = localStorage.getItem('philab_api_key');
+  const rememberFlag = localStorage.getItem('philab_remember_key');
+  if (legacy && rememberFlag === null) {
+    sessionStorage.setItem('philab_api_key', legacy);
+    localStorage.removeItem('philab_api_key');
+    localStorage.setItem('philab_remember_key', 'false');
+  }
+
+  if (rememberKey) {
+    return localStorage.getItem('philab_api_key') || sessionStorage.getItem('philab_api_key') || '';
+  }
+  return sessionStorage.getItem('philab_api_key') || '';
+}
+
+function _persistApiKey({ apiKey, rememberKey }) {
+  sessionStorage.setItem('philab_api_key', apiKey);
+  if (rememberKey) {
+    localStorage.setItem('philab_api_key', apiKey);
+  } else {
+    localStorage.removeItem('philab_api_key');
+  }
+}
+
 function buildRemoteUrl(path, params = {}) {
   const base = state.remote.url.replace(/\/$/, '');
   const query = new URLSearchParams(params);
+  if (!state.remote.apiKey) {
+    query.set('public', '1');
+  }
   return `${base}/api/platform/geometry${path}?${query.toString()}`;
 }
 
@@ -56,6 +122,8 @@ async function loadRuns() {
     const data = await fetchJson(url, state.dataSource === 'remote' ? { headers: getApiHeaders() } : {});
     console.log('[PHILAB] Got runs:', data);
     state.runs = data.runs || [];
+
+    populateAdapterGroups();
 
   if (!state.runs.length) {
     const legend = document.getElementById('deltaLegend');
@@ -106,6 +174,13 @@ function initAtlasModes() {
   document.getElementById('geodesicBtn').addEventListener('click', () => setViewMode('geodesic'));
   document.getElementById('sheafBtn').addEventListener('click', () => setViewMode('sheaf'));
   document.getElementById('chartBtn').addEventListener('click', () => setViewMode('chart'));
+  document.getElementById('webgl3dBtn').addEventListener('click', () => setViewMode('webgl3d'));
+  const plotlyBtn = document.getElementById('plotly3dBtn');
+  if (!ENABLE_PLOTLY_3D) {
+    if (plotlyBtn) plotlyBtn.classList.add('hidden');
+  } else if (plotlyBtn) {
+    plotlyBtn.addEventListener('click', () => setViewMode('plotly3d'));
+  }
 }
 
 function setAtlasMode(mode) {
@@ -162,10 +237,106 @@ function applyAtlasMode() {
 }
 
 function setViewMode(mode) {
+  if (mode === 'plotly3d' && !ENABLE_PLOTLY_3D) {
+    mode = 'webgl3d';
+  }
   state.viewMode = mode;
   document.querySelectorAll('#objectToolbar .chip').forEach(chip => chip.classList.remove('active'));
-  document.getElementById(`${mode}Btn`).classList.add('active');
+  const chip = document.getElementById(`${mode}Btn`);
+  if (chip) chip.classList.add('active');
   renderAll();
+}
+
+function init3DControls() {
+  const adapterSelect = document.getElementById('adapterGroupSelect');
+  const trailToggle = document.getElementById('trailToggle');
+  const trailColorInput = document.getElementById('trailColorInput');
+  const trailColorModeToggle = document.getElementById('trailColorModeToggle');
+  const exportBtn = document.getElementById('export3dBtn');
+  const resetBtn = document.getElementById('reset3dBtn');
+  const exportCsvBtn = document.getElementById('export3dCsvBtn');
+  const colorModeSelect = document.getElementById('colorModeSelect');
+  const csvScopeSelect = document.getElementById('csvScopeSelect');
+  if (adapterSelect) {
+    adapterSelect.addEventListener('change', (e) => {
+      state.adapterGroup = e.target.value;
+      renderAll();
+    });
+  }
+  if (trailToggle) {
+    trailToggle.addEventListener('change', (e) => {
+      state.showTrails = e.target.checked;
+      renderAll();
+    });
+  }
+  if (trailColorInput) {
+    trailColorInput.value = state.trailColor;
+    trailColorInput.addEventListener('change', (e) => {
+      state.trailColor = e.target.value;
+      renderAll();
+    });
+  }
+  if (trailColorModeToggle) {
+    trailColorModeToggle.checked = state.trailColorMode === 'adapter';
+    trailColorModeToggle.addEventListener('change', (e) => {
+      state.trailColorMode = e.target.checked ? 'adapter' : 'custom';
+      renderAll();
+    });
+  }
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      export3DImage();
+    });
+  }
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      reset3DCamera();
+    });
+  }
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener('click', () => {
+      export3DPointsCsv();
+    });
+  }
+  if (colorModeSelect) {
+    colorModeSelect.addEventListener('change', (e) => {
+      state.colorMode = e.target.value;
+      renderAll();
+    });
+  }
+  if (csvScopeSelect) {
+    csvScopeSelect.value = state.csvScope;
+    csvScopeSelect.addEventListener('change', (e) => {
+      state.csvScope = e.target.value;
+    });
+  }
+}
+
+function populateAdapterGroups() {
+  const adapterSelect = document.getElementById('adapterGroupSelect');
+  if (!adapterSelect) return;
+  const adapters = new Set();
+  state.runs.forEach((run) => {
+    (run.adapter_ids || []).forEach((adapterId) => adapters.add(adapterId));
+  });
+  const current = state.adapterGroup || 'all';
+  adapterSelect.innerHTML = '';
+  const allOption = document.createElement('option');
+  allOption.value = 'all';
+  allOption.textContent = 'All';
+  adapterSelect.appendChild(allOption);
+  [...adapters].sort().forEach((adapterId) => {
+    const option = document.createElement('option');
+    option.value = adapterId;
+    option.textContent = adapterId;
+    adapterSelect.appendChild(option);
+  });
+  if ([...adapterSelect.options].some((opt) => opt.value === current)) {
+    adapterSelect.value = current;
+  } else {
+    adapterSelect.value = 'all';
+    state.adapterGroup = 'all';
+  }
 }
 
 function populateRunSelects() {
@@ -652,10 +823,16 @@ function renderScatter() {
     return;
   }
 
+  if (state.viewMode === 'webgl3d' || state.viewMode === 'plotly3d') {
+    render3D();
+    return;
+  }
+
   // Single chart mode - clear any atlas grid elements
   const existingGrid = plotArea.querySelector('.atlas-chart-grid');
   if (existingGrid) existingGrid.remove();
   if (svg) svg.style.display = '';
+  hide3DContainers();
 
   svg.innerHTML = '';
   const mode = currentMode();
@@ -755,6 +932,627 @@ function renderScatter() {
     region.setAttribute('stroke-width', '1');
     svg.appendChild(region);
   }
+}
+
+function hide3DContainers() {
+  const webglContainer = document.getElementById('webglContainer');
+  const plotlyContainer = document.getElementById('plotlyContainer');
+  const message = document.getElementById('threeMessage');
+  const legend = document.getElementById('threeLegend');
+  const scale = document.getElementById('threeLegendScale');
+  const tooltip = document.getElementById('threeTooltip');
+  if (webglContainer) webglContainer.classList.add('hidden');
+  if (plotlyContainer) plotlyContainer.classList.add('hidden');
+  if (message) message.classList.add('hidden');
+  if (legend) legend.classList.add('hidden');
+  if (scale) scale.classList.add('hidden');
+  if (tooltip) tooltip.classList.add('hidden');
+}
+
+function render3D() {
+  const plotArea = document.getElementById('plotArea');
+  const existingGrid = plotArea?.querySelector('.atlas-chart-grid');
+  if (existingGrid) existingGrid.remove();
+  const svg = document.getElementById('scatterPlot');
+  if (svg) svg.style.display = 'none';
+  if (state.viewMode === 'webgl3d') {
+    renderWebGL();
+  } else if (state.viewMode === 'plotly3d' && ENABLE_PLOTLY_3D) {
+    renderPlotly3D();
+  } else {
+    renderWebGL();
+  }
+}
+
+function get3DCoords(mode) {
+  if (!mode) return null;
+  const coords3d = mode.projection_coords_3d;
+  if (!coords3d || !coords3d.length) return null;
+  return coords3d;
+}
+
+function getAdapterIdForLayer(summary, layer) {
+  if (state.adapterGroup && state.adapterGroup !== 'all') {
+    return state.adapterGroup;
+  }
+  if (layer?.adapter_id) return layer.adapter_id;
+  const adapters = summary?.adapter_ids || [];
+  return adapters.length ? adapters[0] : 'base';
+}
+
+function getAdapterLegendIds(summary, layer) {
+  const adapters = summary?.adapter_ids || [];
+  const ids = [];
+  const add = (value) => {
+    if (!value || ids.includes(value)) return;
+    ids.push(value);
+  };
+  if (layer?.adapter_id) add(layer.adapter_id);
+  if (state.adapterGroup && state.adapterGroup !== 'all') add(state.adapterGroup);
+  adapters.forEach((adapterId) => add(adapterId));
+  return ids;
+}
+
+function getSelectedModeKey() {
+  const layer = currentLayer();
+  const mode = currentMode();
+  if (!layer || !mode) return null;
+  return { layerIndex: layer.layer_index, modeIndex: mode.mode_index };
+}
+
+async function collectTrajectoryPoints(groupId) {
+  const key = getSelectedModeKey();
+  if (!key) return [];
+  const runs = state.runs.filter((run) => {
+    if (groupId === 'all') return true;
+    return (run.adapter_ids || []).includes(groupId);
+  });
+  const points = [];
+  for (const run of runs) {
+    if (!state.summaries[run.run_id]) {
+      try {
+        state.summaries[run.run_id] = await loadRunSummary(run.run_id);
+      } catch (err) {
+        continue;
+      }
+    }
+    const summary = state.summaries[run.run_id];
+    const layer = summary?.layers?.find((l) => l.layer_index === key.layerIndex);
+    const mode = layer?.residual_modes?.find((m) => m.mode_index === key.modeIndex);
+    const coords = get3DCoords(mode);
+    if (!coords || !coords.length) continue;
+    const centroid = coords.reduce(
+      (acc, pt) => [acc[0] + pt[0], acc[1] + pt[1], acc[2] + pt[2]],
+      [0, 0, 0]
+    ).map((value) => value / coords.length);
+    points.push({
+      run_id: run.run_id,
+      created_at: run.created_at || 0,
+      centroid,
+    });
+  }
+  return points.sort((a, b) => a.created_at - b.created_at);
+}
+
+function show3DMessage(text) {
+  const message = document.getElementById('threeMessage');
+  if (!message) return;
+  message.textContent = text;
+  message.classList.remove('hidden');
+}
+
+function update3DLegend() {
+  const legend = document.getElementById('threeLegend');
+  const scale = document.getElementById('threeLegendScale');
+  if (!legend) return;
+  const mode = currentMode();
+  const layer = currentLayer();
+  const coords = get3DCoords(mode);
+  if (!coords) {
+    legend.classList.add('hidden');
+    if (scale) scale.classList.add('hidden');
+    return;
+  }
+  const variance = mode?.variance_explained ? (mode.variance_explained * 100).toFixed(2) : 'n/a';
+  const layerIndex = layer?.layer_index ?? 'n/a';
+  const adapter = state.adapterGroup === 'all' ? 'all adapters' : state.adapterGroup;
+  const trails = state.showTrails ? 'on' : 'off';
+  const colorMode = state.colorMode;
+  const trailLabel = state.trailColorMode === 'adapter' ? 'adapter' : state.trailColor;
+  legend.innerHTML = `<strong>3D Mode View.</strong> Layer ${layerIndex}, Mode ${mode.mode_index}, ` +
+    `${coords.length} points, variance ${variance}%. Group: ${adapter}. Trails: ${trails} (${trailLabel}). Color: ${colorMode}.`;
+  legend.classList.remove('hidden');
+  if (scale) {
+    if (colorMode === 'layer') {
+      scale.innerHTML = `Layer color gradient (L0 → Lmax). Current layer: ${layerIndex}.<div class="scale-bar"></div>`;
+    } else {
+      renderAdapterLegend(scale, getAdapterLegendIds(getSummary(state.focus), layer));
+    }
+    scale.classList.remove('hidden');
+  }
+}
+
+function renderAdapterLegend(container, adapterIds) {
+  container.innerHTML = '';
+  const label = document.createElement('div');
+  label.textContent = adapterIds.length
+    ? 'Adapter color key:'
+    : 'Adapter color key: no adapters detected.';
+  container.appendChild(label);
+  if (!adapterIds.length) return;
+  const swatchWrap = document.createElement('div');
+  swatchWrap.className = 'adapter-swatches';
+  adapterIds.forEach((adapterId) => {
+    const row = document.createElement('div');
+    row.className = 'adapter-swatch-row';
+    const swatch = document.createElement('span');
+    swatch.className = 'adapter-swatch';
+    swatch.style.backgroundColor = colorForAdapter(adapterId);
+    const text = document.createElement('span');
+    text.textContent = adapterId;
+    row.appendChild(swatch);
+    row.appendChild(text);
+    swatchWrap.appendChild(row);
+  });
+  container.appendChild(swatchWrap);
+}
+
+function getTrailColor() {
+  if (state.trailColorMode === 'adapter' && state.adapterGroup !== 'all') {
+    return colorForAdapter(state.adapterGroup);
+  }
+  return state.trailColor || '#fbbf24';
+}
+
+function renderWebGL() {
+  const webglContainer = document.getElementById('webglContainer');
+  const plotlyContainer = document.getElementById('plotlyContainer');
+  if (!webglContainer) return;
+  if (typeof THREE === 'undefined') {
+    hide3DContainers();
+    show3DMessage('Three.js not available for WebGL view.');
+    return;
+  }
+  webglContainer.classList.remove('hidden');
+  if (plotlyContainer) plotlyContainer.classList.add('hidden');
+
+  const summary = getSummary(state.focus);
+  const mode = currentMode();
+  const coords = get3DCoords(mode);
+  if (!coords) {
+    hide3DContainers();
+    show3DMessage('3D data unavailable for this mode.');
+    return;
+  }
+  const message = document.getElementById('threeMessage');
+  if (message) message.classList.add('hidden');
+
+  if (!webglRenderer) {
+    webglRenderer = new THREE.WebGLRenderer({ antialias: true });
+    webglRenderer.setPixelRatio(window.devicePixelRatio || 1);
+    webglContainer.innerHTML = '';
+    webglContainer.appendChild(webglRenderer.domElement);
+  }
+
+  const width = webglContainer.clientWidth || 800;
+  const height = webglContainer.clientHeight || 420;
+  webglRenderer.setSize(width, height);
+
+  webglScene = new THREE.Scene();
+  webglScene.background = new THREE.Color(0x0f1626);
+  webglCamera = new THREE.PerspectiveCamera(60, width / height, 0.1, 100);
+
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(coords.flat());
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const layer = currentLayer();
+  const layerIndex = layer?.layer_index ?? 0;
+  const adapterId = getAdapterIdForLayer(summary, layer);
+  const pointColor = state.colorMode === 'adapter'
+    ? colorForAdapter(adapterId)
+    : colorForLayer(layerIndex);
+  const material = new THREE.PointsMaterial({ color: pointColor, size: 0.06, transparent: true, opacity: 0.7 });
+  webglPoints = new THREE.Points(geometry, material);
+  webglScene.add(webglPoints);
+
+  const axesHelper = new THREE.AxesHelper(1.5);
+  webglScene.add(axesHelper);
+  update3DLegend();
+
+  webglControls = new THREE.OrbitControls(webglCamera, webglRenderer.domElement);
+  autoCenterCamera(coords);
+  webglRaycaster = new THREE.Raycaster();
+  webglRenderer.domElement.onmousemove = handleWebGLHover;
+
+  if (state.showTrails) {
+    collectTrajectoryPoints(state.adapterGroup).then((points) => {
+      if (!points.length) return;
+      const trailGeometry = new THREE.BufferGeometry();
+      const trailPositions = new Float32Array(points.flatMap((p) => p.centroid));
+      trailGeometry.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+      const lineMaterial = new THREE.LineBasicMaterial({ color: getTrailColor() });
+      webglTrails = new THREE.Line(trailGeometry, lineMaterial);
+      webglScene.add(webglTrails);
+      webglRenderer.render(webglScene, webglCamera);
+    });
+  }
+
+  webglRenderer.render(webglScene, webglCamera);
+}
+
+function renderPlotly3D() {
+  const plotlyContainer = document.getElementById('plotlyContainer');
+  const webglContainer = document.getElementById('webglContainer');
+  if (!plotlyContainer) return;
+  if (typeof Plotly === 'undefined') {
+    hide3DContainers();
+    show3DMessage('Plotly not available for 3D view.');
+    return;
+  }
+  plotlyContainer.classList.remove('hidden');
+  if (webglContainer) webglContainer.classList.add('hidden');
+
+  const mode = currentMode();
+  const coords = get3DCoords(mode);
+  if (!coords) {
+    hide3DContainers();
+    show3DMessage('3D data unavailable for this mode.');
+    return;
+  }
+  const message = document.getElementById('threeMessage');
+  if (message) message.classList.add('hidden');
+
+  const xs = coords.map((c) => c[0]);
+  const ys = coords.map((c) => c[1]);
+  const zs = coords.map((c) => c[2]);
+  const summary = getSummary(state.focus);
+  const layer = currentLayer();
+  const layerIndex = layer?.layer_index ?? 0;
+  const adapterId = getAdapterIdForLayer(summary, layer);
+  const color = state.colorMode === 'adapter'
+    ? colorForAdapter(adapterId)
+    : colorForLayer(layerIndex);
+  const trace = {
+    x: xs,
+    y: ys,
+    z: zs,
+    mode: 'markers',
+    type: 'scatter3d',
+    marker: { size: 3, color, opacity: 0.7 },
+    text: coords.map((c, idx) => `Point ${idx}<br>x=${c[0].toFixed(3)} y=${c[1].toFixed(3)} z=${c[2].toFixed(3)}`),
+    hoverinfo: 'text',
+    name: 'Residual mode',
+  };
+
+  const traces = [trace];
+  update3DLegend();
+  if (state.showTrails) {
+    collectTrajectoryPoints(state.adapterGroup).then((points) => {
+      if (!points.length) {
+        Plotly.newPlot(plotlyContainer, traces, plotlyLayout(), { displayModeBar: false });
+        return;
+      }
+      const trail = {
+        x: points.map((p) => p.centroid[0]),
+        y: points.map((p) => p.centroid[1]),
+        z: points.map((p) => p.centroid[2]),
+        mode: 'lines+markers',
+        type: 'scatter3d',
+        marker: { size: 4, color: getTrailColor() },
+        line: { color: getTrailColor(), width: 3 },
+        name: 'Checkpoint trail',
+      };
+      Plotly.newPlot(plotlyContainer, [...traces, trail], plotlyLayout(), { displayModeBar: false });
+    });
+  } else {
+    Plotly.newPlot(plotlyContainer, traces, plotlyLayout(), { displayModeBar: false });
+  }
+}
+
+function export3DImage() {
+  if (state.viewMode === 'webgl3d') {
+    if (!webglRenderer) {
+      show3DMessage('WebGL renderer is not initialized.');
+      return;
+    }
+    const dataUrl = webglRenderer.domElement.toDataURL('image/png');
+    downloadImage(dataUrl, 'philab_webgl_3d.png');
+    return;
+  }
+  if (state.viewMode === 'plotly3d') {
+    const plotlyContainer = document.getElementById('plotlyContainer');
+    if (!plotlyContainer || typeof Plotly === 'undefined') {
+      show3DMessage('Plotly is not available.');
+      return;
+    }
+    Plotly.toImage(plotlyContainer, { format: 'png', width: 900, height: 600 }).then((dataUrl) => {
+      downloadImage(dataUrl, 'philab_plotly_3d.png');
+    });
+    return;
+  }
+  show3DMessage('Switch to a 3D view before exporting.');
+}
+
+function export3DPointsCsv() {
+  const layer = currentLayer();
+  const mode = currentMode();
+  if (!layer || !mode) {
+    show3DMessage('Select a residual mode with 3D data before exporting.');
+    return;
+  }
+  const header = [
+    'run_id',
+    'run_created_at',
+    'run_description',
+    'model_name',
+    'source_model_name',
+    'target_model_name',
+    'adapter_ids',
+    'alignment_info',
+    'timeline',
+    'point_index',
+    'x',
+    'y',
+    'z',
+    'layer_index',
+    'mode_index',
+    'adapter_id',
+    'adapter_weight_norm',
+    'effective_rank',
+    'delta_loss_estimate',
+    'residual_sample_count',
+    'chart_atlases',
+    'geodesic_paths',
+    'attention_sheaf',
+    'mode_eigenvalue',
+    'variance_explained',
+    'mode_description',
+    'token_examples',
+    'projection_coords_2d',
+    'projection_coords_3d',
+    'span_across_layers',
+    'growth_curve',
+    'semantic_region',
+    'spectral_bundle',
+  ];
+  const selectedLayerIndex = layer.layer_index;
+  const selectedModeIndex = mode.mode_index;
+  const focusRunId = state.focus === SIDES.COMPARISON ? state.comparisonRunId : state.primaryRunId;
+  const runs = state.runs.filter((run) => {
+    if (state.csvScope === 'current') return run.run_id === focusRunId;
+    if (state.csvScope === 'group') {
+      if (state.adapterGroup === 'all') return true;
+      return (run.adapter_ids || []).includes(state.adapterGroup);
+    }
+    return true;
+  });
+  Promise.all(runs.map(async (run) => {
+    if (!state.summaries[run.run_id]) {
+      try {
+        state.summaries[run.run_id] = await loadRunSummary(run.run_id);
+      } catch (err) {
+        return null;
+      }
+    }
+    return state.summaries[run.run_id];
+  })).then((loaded) => {
+    const lines = [];
+    loaded.filter(Boolean).forEach((summary) => {
+      const targetLayer = summary.layers?.find((l) => l.layer_index === selectedLayerIndex);
+      const targetMode = targetLayer?.residual_modes?.find((m) => m.mode_index === selectedModeIndex);
+      const coords = get3DCoords(targetMode);
+      if (!coords) return;
+      const adapterId = getAdapterIdForLayer(summary, targetLayer);
+      coords.forEach((c, idx) => {
+        lines.push([
+          summary.run_id,
+          summary.created_at,
+          summary.description,
+          summary.model_name,
+          summary.source_model_name,
+          summary.target_model_name,
+          summary.adapter_ids,
+          summary.alignment_info,
+          summary.timeline,
+          idx,
+          c[0],
+          c[1],
+          c[2],
+          targetLayer.layer_index,
+          targetMode.mode_index,
+          adapterId || '',
+          targetLayer.adapter_weight_norm,
+          targetLayer.effective_rank,
+          targetLayer.delta_loss_estimate,
+          targetLayer.residual_sample_count,
+          targetLayer.chart_atlases,
+          targetLayer.geodesic_paths,
+          targetLayer.attention_sheaf,
+          targetMode.eigenvalue,
+          targetMode.variance_explained ?? '',
+          targetMode.description,
+          targetMode.token_examples,
+          targetMode.projection_coords,
+          targetMode.projection_coords_3d,
+          targetMode.span_across_layers,
+          targetMode.growth_curve,
+          targetMode.semantic_region,
+          targetMode.spectral_bundle,
+        ].map(csvEscape).join(','));
+      });
+    });
+    if (!lines.length) {
+      show3DMessage('No 3D points available for the selected CSV scope.');
+      return;
+    }
+    const csv = [header.join(','), ...lines].join('\n');
+    const filename = `philab_3d_points_${state.csvScope}_layer${layer.layer_index}_mode${mode.mode_index}.csv`;
+    downloadText(csv, filename);
+  });
+}
+
+function downloadImage(dataUrl, filename) {
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function downloadText(content, filename) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(value) {
+  if (value === null || value === undefined) return '';
+  let text;
+  if (typeof value === 'object') {
+    try {
+      text = JSON.stringify(value);
+    } catch (err) {
+      text = String(value);
+    }
+  } else {
+    text = String(value);
+  }
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function plotlyLayout() {
+  return {
+    margin: { l: 0, r: 0, t: 10, b: 0 },
+    paper_bgcolor: '#0f1626',
+    plot_bgcolor: '#0f1626',
+    scene: {
+      xaxis: { color: '#94a3b8' },
+      yaxis: { color: '#94a3b8' },
+      zaxis: { color: '#94a3b8' },
+    },
+    showlegend: false,
+  };
+}
+
+function colorForLayer(layerIndex) {
+  const maxLayer = Math.max(1, ...state.runs.map((run) => run.layer_count || 31));
+  const t = Math.min(1, Math.max(0, layerIndex / maxLayer));
+  const start = [56, 189, 248]; // blue
+  const mid = [34, 197, 94]; // green
+  const end = [249, 115, 22]; // orange
+  const blend = (a, b, t) => Math.round(a + (b - a) * t);
+  const first = [
+    blend(start[0], mid[0], t),
+    blend(start[1], mid[1], t),
+    blend(start[2], mid[2], t),
+  ];
+  const second = [
+    blend(mid[0], end[0], t),
+    blend(mid[1], end[1], t),
+    blend(mid[2], end[2], t),
+  ];
+  const color = t < 0.5
+    ? first
+    : second;
+  const hex = color.map((v) => v.toString(16).padStart(2, '0')).join('');
+  return `#${hex}`;
+}
+
+function colorForAdapter(adapterId) {
+  const palette = [
+    '#38bdf8',
+    '#22c55e',
+    '#f97316',
+    '#e879f9',
+    '#facc15',
+    '#fb7185',
+    '#a78bfa',
+    '#2dd4bf',
+    '#60a5fa',
+    '#f472b6',
+  ];
+  const key = adapterId || 'base';
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = ((hash << 5) - hash) + key.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % palette.length;
+  return palette[index];
+}
+
+function autoCenterCamera(coords) {
+  if (!webglCamera || !coords.length) return;
+  const box = new THREE.Box3();
+  const vector = new THREE.Vector3();
+  coords.forEach((pt) => {
+    vector.set(pt[0], pt[1], pt[2]);
+    box.expandByPoint(vector);
+  });
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const center = new THREE.Vector3();
+  box.getCenter(center);
+  const distance = maxDim ? maxDim * 2.5 : 6;
+  webglCamera.position.set(center.x, center.y, center.z + distance);
+  if (webglControls) {
+    webglControls.target.copy(center);
+    webglControls.update();
+  } else {
+    webglCamera.lookAt(center);
+  }
+}
+
+function reset3DCamera() {
+  const mode = currentMode();
+  const coords = get3DCoords(mode);
+  if (coords) {
+    autoCenterCamera(coords);
+    if (webglRenderer && webglScene && webglCamera) {
+      webglRenderer.render(webglScene, webglCamera);
+    }
+    return;
+  }
+  show3DMessage('No 3D data to reset.');
+}
+
+function handleWebGLHover(event) {
+  if (!webglRaycaster || !webglCamera || !webglPoints) return;
+  const tooltip = document.getElementById('threeTooltip');
+  if (!tooltip) return;
+  const rect = webglRenderer.domElement.getBoundingClientRect();
+  const mouse = new THREE.Vector2(
+    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+    -((event.clientY - rect.top) / rect.height) * 2 + 1
+  );
+  webglRaycaster.setFromCamera(mouse, webglCamera);
+  webglRaycaster.params.Points.threshold = 0.08;
+  const intersects = webglRaycaster.intersectObject(webglPoints);
+  if (!intersects.length) {
+    tooltip.classList.add('hidden');
+    return;
+  }
+  const index = intersects[0].index;
+  if (index === webglHoverIndex) return;
+  webglHoverIndex = index;
+  const mode = currentMode();
+  const coords = get3DCoords(mode);
+  const point = coords[index];
+  tooltip.innerHTML = `Point ${index}<br>x=${point[0].toFixed(3)} y=${point[1].toFixed(3)} z=${point[2].toFixed(3)}`;
+  tooltip.style.left = `${event.clientX + 12}px`;
+  tooltip.style.top = `${event.clientY + 12}px`;
+  tooltip.classList.remove('hidden');
 }
 
 function renderAtlasGrid() {
@@ -1000,13 +1798,16 @@ function renderAll() {
 }
 
 function loadRemoteConfig() {
-  state.remote.url = localStorage.getItem('philab_remote_url') || 'https://api.philab.everplay.tech';
-  state.remote.apiKey = localStorage.getItem('philab_api_key') || '';
-  state.remote.dataset = localStorage.getItem('philab_dataset') || 'users';
-  state.dataSource = localStorage.getItem('philab_data_source') || 'local';
-  if (state.dataSource === 'remote') {
-    state.useMock = false;
-  }
+  const rememberKey = _getRememberKeyPreference();
+  state.remote.apiKey = _loadApiKey({ rememberKey });
+  state.remote.url = LOCK_API_BASE_URL
+    ? DEFAULT_REMOTE_URL
+    : (localStorage.getItem('philab_remote_url') || DEFAULT_REMOTE_URL);
+  state.remote.dataset = localStorage.getItem('philab_dataset') || DEFAULT_DATASET;
+  state.dataSource = ALLOW_LOCAL_MODE
+    ? (localStorage.getItem('philab_data_source') || DEFAULT_DATA_SOURCE)
+    : 'remote';
+  if (state.dataSource === 'remote') state.useMock = false;
 }
 
 async function loadRemoteDatasets() {
@@ -1048,6 +1849,7 @@ function wireEvents() {
   const datasetSelect = document.getElementById('datasetSelect');
   const apiKeyInput = document.getElementById('apiKeyInput');
   const remoteUrlInput = document.getElementById('remoteUrlInput');
+  const rememberKeyToggle = document.getElementById('rememberKeyToggle');
 
   primarySelect.addEventListener('change', async (e) => {
     state.primaryRunId = e.target.value;
@@ -1063,22 +1865,32 @@ function wireEvents() {
     renderAll();
   });
 
-  mockToggle.addEventListener('change', async (e) => {
-    state.useMock = e.target.checked;
-    state.summaries = {};
-    await loadRuns();
-  });
+  if (mockToggle) {
+    if (!ALLOW_MOCK_TOGGLE) {
+      mockToggle.checked = false;
+      mockToggle.disabled = true;
+      mockToggle.closest('label')?.classList.add('hidden');
+    } else {
+      mockToggle.addEventListener('change', async (e) => {
+        state.useMock = e.target.checked;
+        state.summaries = {};
+        await loadRuns();
+      });
+    }
+  }
 
   if (dataSourceSelect) dataSourceSelect.addEventListener('change', async (e) => {
     state.dataSource = e.target.value;
     localStorage.setItem('philab_data_source', state.dataSource);
     if (state.dataSource === 'remote') {
       state.useMock = false;
-      mockToggle.checked = false;
-      mockToggle.disabled = true;
+      if (mockToggle) {
+        mockToggle.checked = false;
+        mockToggle.disabled = true;
+      }
       await loadRemoteDatasets();
     } else {
-      mockToggle.disabled = false;
+      if (mockToggle) mockToggle.disabled = false;
     }
     state.summaries = {};
     await loadRuns();
@@ -1093,9 +1905,18 @@ function wireEvents() {
     }
   });
 
+  if (rememberKeyToggle) {
+    rememberKeyToggle.addEventListener('change', () => {
+      const enabled = !!rememberKeyToggle.checked;
+      _setRememberKeyPreference(enabled);
+      _persistApiKey({ apiKey: state.remote.apiKey || '', rememberKey: enabled });
+    });
+  }
+
   if (apiKeyInput) apiKeyInput.addEventListener('change', async (e) => {
     state.remote.apiKey = e.target.value.trim();
-    localStorage.setItem('philab_api_key', state.remote.apiKey);
+    const rememberKey = rememberKeyToggle ? !!rememberKeyToggle.checked : _getRememberKeyPreference();
+    _persistApiKey({ apiKey: state.remote.apiKey, rememberKey });
     if (state.dataSource === 'remote') {
       await loadRemoteDatasets();
       state.summaries = {};
@@ -1104,6 +1925,7 @@ function wireEvents() {
   });
 
   if (remoteUrlInput) remoteUrlInput.addEventListener('change', async (e) => {
+    if (LOCK_API_BASE_URL) return;
     state.remote.url = e.target.value.trim();
     localStorage.setItem('philab_remote_url', state.remote.url);
     if (state.dataSource === 'remote') {
@@ -1112,6 +1934,32 @@ function wireEvents() {
       await loadRuns();
     }
   });
+}
+
+function applyDeploymentLocks() {
+  const dataSourceSelect = document.getElementById('dataSourceSelect');
+  const remoteUrlInput = document.getElementById('remoteUrlInput');
+  const mockToggle = document.getElementById('mockToggle');
+
+  if (!ALLOW_LOCAL_MODE && dataSourceSelect) {
+    dataSourceSelect.value = 'remote';
+    dataSourceSelect.disabled = true;
+    dataSourceSelect.title = 'Locked in this deployment';
+    const localOption = [...dataSourceSelect.options].find((opt) => opt.value === 'local');
+    if (localOption) localOption.disabled = true;
+  }
+
+  if (LOCK_API_BASE_URL && remoteUrlInput) {
+    remoteUrlInput.value = state.remote.url;
+    remoteUrlInput.readOnly = true;
+    remoteUrlInput.title = 'Locked in this deployment';
+  }
+
+  if (!ALLOW_MOCK_TOGGLE && mockToggle) {
+    mockToggle.checked = false;
+    mockToggle.disabled = true;
+    mockToggle.closest('label')?.classList.add('hidden');
+  }
 }
 
 // Tooltip system
@@ -1275,16 +2123,22 @@ window.addEventListener('DOMContentLoaded', async () => {
   const apiKeyInput = document.getElementById('apiKeyInput');
   const remoteUrlInput = document.getElementById('remoteUrlInput');
   const mockToggle = document.getElementById('mockToggle');
+  const rememberKeyToggle = document.getElementById('rememberKeyToggle');
   if (dataSourceSelect) dataSourceSelect.value = state.dataSource;
   if (datasetSelect) datasetSelect.value = state.remote.dataset;
   if (apiKeyInput) apiKeyInput.value = state.remote.apiKey;
   if (remoteUrlInput) remoteUrlInput.value = state.remote.url;
+  if (rememberKeyToggle) {
+    rememberKeyToggle.checked = _getRememberKeyPreference();
+  }
+  applyDeploymentLocks();
   if (state.dataSource === 'remote' && mockToggle) {
     state.useMock = false;
     mockToggle.checked = false;
     mockToggle.disabled = true;
   }
   initAtlasModes();
+  init3DControls();
   initTooltips();
   wireEvents();
   applyAtlasMode();  // Apply initial atlas mode state

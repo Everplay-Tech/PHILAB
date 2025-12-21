@@ -53,6 +53,7 @@ class Contributor(Base):
     banned = Column(Boolean, nullable=False, default=False)
     banned_at = Column(DateTime)
     ban_reason = Column(Text)
+    is_admin = Column(Boolean, nullable=False, default=False)
 
     results = relationship("Result", back_populates="contributor")
 

@@ -61,6 +61,7 @@ def _convert_layer(layer_payload: dict) -> LayerTelemetry:
                     variance_explained=variance_fraction,
                     token_examples=generated_mode.token_examples,
                     projection_coords=generated_mode.projection_coords,
+                    projection_coords_3d=generated_mode.projection_coords_3d,
                     description=f"Mode {idx} from geometry energy",
                 )
             )

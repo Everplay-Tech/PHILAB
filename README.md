@@ -210,6 +210,7 @@ bandit -r phi2_lab/
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+For experiment-specific steps and hardware-tier guidance, see `CONTRIBUTING_RUNS.md`.
 
 Before contributing, please:
 1. Read our [Code of Conduct](CODE_OF_CONDUCT.md)

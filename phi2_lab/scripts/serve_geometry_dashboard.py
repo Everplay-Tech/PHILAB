@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -14,6 +15,7 @@ import uvicorn
 from phi2_lab.geometry_viz import api as geometry_api
 from phi2_lab.geometry_viz import mock_data, telemetry_store
 from phi2_lab.utils import load_yaml_data
+from phi2_lab.utils.cors import load_cors_settings
 from phi2_lab.phi2_core.config import load_app_config
 from phi2_lab.utils.validation import validate_runtime_config
 from phi2_lab.auth.api_keys import get_model_allowlists
@@ -34,6 +36,15 @@ def build_app(static_dir: Path) -> FastAPI:
     """Create the FastAPI application with geometry routes and static assets."""
 
     app = FastAPI(title="Phi-2 Lab Adapter Observatory", version="0.1")
+    cors = load_cors_settings()
+    if cors.allow_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors.allow_origins,
+            allow_credentials=cors.allow_credentials,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     app.include_router(geometry_api.router)
 
     index_path = static_dir / "index.html"

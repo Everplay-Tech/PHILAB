@@ -9,8 +9,11 @@ from typing import Dict, List, Optional, Sequence
 
 import yaml
 
-from ..phi2_atlas.query import fetch_semantic_codes, find_experiments
-from ..phi2_atlas.schema import LayerInfo, ModelInfo
+from ..phi2_atlas.service import (
+    collect_experiment_coverage,
+    collect_layer_notes,
+    collect_semantic_codes,
+)
 from ..phi2_atlas.storage import AtlasStorage
 from ..phi2_atlas.writer import AtlasWriter
 from ..phi2_experiments.metrics import ExperimentResult, compute_delta_metrics
@@ -315,33 +318,12 @@ class Orchestrator:
         mapped_layers: set[int] = set()
         experiments: List[str] = []
         layer_notes: Dict[int, str] = {}
-        if self.atlas_storage:
-            for record in find_experiments(self.atlas_storage, tags=list(focus_tags)):
-                experiments.append(record.spec_id)
-                payload_layers = record.payload.get("layers") or []
-                payload_layer_idx = record.payload.get("layer_idx")
-                if isinstance(payload_layer_idx, int):
-                    mapped_layers.add(payload_layer_idx)
-                for layer in payload_layers:
-                    try:
-                        mapped_layers.add(int(layer))
-                    except (TypeError, ValueError):
-                        continue
-            with self.atlas_storage.session() as session:
-                model = (
-                    session.query(ModelInfo)
-                    .filter(ModelInfo.name == self.model_name)
-                    .one_or_none()
-                )
-                if model:
-                    for layer in session.query(LayerInfo).filter(LayerInfo.model_id == model.id):
-                        if layer.summary:
-                            layer_notes[layer.index] = layer.summary
-                            mapped_layers.add(layer.index)
         semantic_codes: List[str] = []
         if self.atlas_storage:
-            entries = fetch_semantic_codes(self.atlas_storage, tag_filter=list(focus_tags) or None)
-            semantic_codes = [entry.code for entry in entries]
+            experiments, mapped_layers = collect_experiment_coverage(self.atlas_storage, focus_tags)
+            layer_notes, noted_layers = collect_layer_notes(self.atlas_storage, self.model_name)
+            mapped_layers.update(noted_layers)
+            semantic_codes = collect_semantic_codes(self.atlas_storage, focus_tags)
         missing_layers = [layer for layer in target_layers if layer not in mapped_layers]
         return AtlasSnapshot(
             mapped_layers=sorted(mapped_layers),

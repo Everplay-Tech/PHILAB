@@ -26,6 +26,14 @@ from .routes import (
 def create_app() -> FastAPI:
     app = FastAPI(title="PhiLab Platform API", version="0.1")
 
+    @app.get("/", include_in_schema=False)
+    def root() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/health", include_in_schema=False)
+    def root_health() -> dict[str, str]:
+        return {"status": "ok"}
+
     for router in (
         admin_router,
         contributors_router,

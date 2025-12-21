@@ -115,9 +115,16 @@ After deploy + migrations:
 - Open dashboard: `https://philab.technopoets.net`
   - You should see demo runs without an API key (public preview).
 - API health:
-  - `https://api.technopoets.net/api/platform/stats` (healthcheck path)
+  - `https://api.technopoets.net/api/platform/health`
 - Registration:
   - If enabled, create a test contributor on staging first.
+
+## 5.1) Troubleshooting: Railway shows `502 Application failed to respond`
+
+If you see a Railway edge response like `{"message":"Application failed to respond"}`:
+- Confirm the API service is listening on the Railway port (`PORT`). Uvicorn logs should show `0.0.0.0:<PORT>`.
+- In Railway UI → the API service → Settings/Networking: confirm the service “Port” matches what Uvicorn is listening on (Railway commonly uses `8080`).
+- Confirm the Health Check path is `/api/platform/health` (this endpoint is unauthenticated and should return `{"status":"ok"}`).
 
 ## 6) “Going ham” safely (staging workflow)
 

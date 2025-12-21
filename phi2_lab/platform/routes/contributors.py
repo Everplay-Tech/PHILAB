@@ -25,7 +25,7 @@ router = APIRouter(tags=["platform"])
 
 @router.post("/register", response_model=RegisterResponse)
 def register(payload: RegisterRequest, session: Session = Depends(get_session)) -> RegisterResponse:
-    allow_registration = os.environ.get("PHILAB_PLATFORM_ALLOW_REGISTRATION", "true").lower() == "true"
+    allow_registration = os.environ.get("PHILAB_PLATFORM_ALLOW_REGISTRATION", "false").lower() == "true"
     invite_tokens = {
         token.strip()
         for token in os.environ.get("PHILAB_PLATFORM_INVITE_TOKENS", "").split(",")

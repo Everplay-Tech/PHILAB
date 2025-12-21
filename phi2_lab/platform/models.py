@@ -61,7 +61,7 @@ class Contributor(Base):
     last_contribution_at = Column(DateTime)
 
     results = relationship("Result", back_populates="contributor")
-    point_transactions = relationship("PointTransaction", back_populates="contributor")
+    point_transactions = relationship("PointTransaction", back_populates="contributor", foreign_keys="[PointTransaction.contributor_id]")
 
 
 class Task(Base):

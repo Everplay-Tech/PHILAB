@@ -14,6 +14,7 @@
         <button id="singleModelBtn" class="mode-btn active">Single Model</button>
         <button id="dualModelBtn" class="mode-btn">Dual Model</button>
         <button id="atlasModeBtn" class="mode-btn">Atlas Mode</button>
+        <button id="tasksBtn" class="mode-btn tasks-btn">Tasks</button>
       </div>
       <div class="run-controls">
         <label for="primaryRunSelect">A:</label>
@@ -151,8 +152,42 @@
       </div>
     </aside>
   </main>
+  <!-- Tasks Panel Overlay -->
+  <div id="tasksOverlay" class="tasks-overlay hidden">
+    <div class="tasks-panel">
+      <div class="tasks-header">
+        <h2>Community Task Board</h2>
+        <button id="closeTasksBtn" class="close-btn">&times;</button>
+      </div>
+      <div class="tasks-filters">
+        <label for="taskStatusFilter">Status:</label>
+        <select id="taskStatusFilter">
+          <option value="">All</option>
+          <option value="open" selected>Open</option>
+          <option value="completed">Completed</option>
+        </select>
+        <label for="taskPriorityFilter">Priority:</label>
+        <select id="taskPriorityFilter">
+          <option value="">Any</option>
+          <option value="3">High (3+)</option>
+          <option value="2">Medium (2+)</option>
+          <option value="1">Low (1+)</option>
+        </select>
+        <button id="refreshTasksBtn" class="mode-btn">Refresh</button>
+      </div>
+      <div id="tasksList" class="tasks-list">
+        <p class="tasks-loading">Loading tasks...</p>
+      </div>
+      <div id="taskDetail" class="task-detail hidden">
+        <button id="backToListBtn" class="mode-btn">&larr; Back to list</button>
+        <div id="taskDetailContent"></div>
+      </div>
+    </div>
+  </div>
+
   <script src="config.js?v=1"></script>
   <script type="module" src="bootstrap.js?v=1"></script>
-  <script defer src="app2.js?v=8"></script>
+  <script defer src="app2.js?v=9"></script>
+  <script defer src="tasks.js?v=1"></script>
 </body>
 </html>

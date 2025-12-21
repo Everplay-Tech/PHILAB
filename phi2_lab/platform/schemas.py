@@ -30,10 +30,37 @@ class TaskSummary(BaseModel):
     runs_needed: int
     runs_completed: int
     priority: int
+    base_points: int = 10
+    bonus_points: int = 0
 
 
 class TaskDetail(TaskSummary):
     spec_yaml: str
+
+
+class TaskCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    hypothesis: Optional[str] = None
+    spec_yaml: str
+    dataset_name: Optional[str] = None
+    runs_needed: int = 50
+    priority: int = 0
+    base_points: int = 10
+    bonus_points: int = 0
+    bonus_reason: Optional[str] = None
+
+
+class TaskUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    hypothesis: Optional[str] = None
+    status: Optional[str] = None
+    runs_needed: Optional[int] = None
+    priority: Optional[int] = None
+    base_points: Optional[int] = None
+    bonus_points: Optional[int] = None
+    bonus_reason: Optional[str] = None
 
 
 class ResultMetadata(BaseModel):
@@ -77,6 +104,9 @@ class ContributorSummary(BaseModel):
     username: str
     runs_completed: int
     compute_donated_seconds: int
+    points: int = 0
+    level: int = 1
+    streak_days: int = 0
 
 
 class FindingSummary(BaseModel):
@@ -140,3 +170,25 @@ class StatsSummary(BaseModel):
     total_contributors: int
     total_compute_hours: float
     active_tasks: int
+    total_points_awarded: int = 0
+
+
+class PointTransactionSummary(BaseModel):
+    id: str
+    contributor_id: str
+    amount: int
+    balance_after: int
+    reason: str
+    description: Optional[str] = None
+    task_id: Optional[str] = None
+    created_at: datetime
+
+
+class LeaderboardEntry(BaseModel):
+    rank: int
+    contributor_id: str
+    username: str
+    points: int
+    level: int
+    runs_completed: int
+    streak_days: int

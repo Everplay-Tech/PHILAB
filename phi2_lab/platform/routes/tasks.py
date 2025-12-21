@@ -42,6 +42,8 @@ def tasks(
             runs_needed=task.runs_needed,
             runs_completed=task.runs_completed,
             priority=task.priority,
+            base_points=task.base_points,
+            bonus_points=task.bonus_points,
         )
         for task in records
     ]
@@ -67,6 +69,8 @@ def task_detail(
         runs_completed=task.runs_completed,
         priority=task.priority,
         spec_yaml=task.spec_yaml,
+        base_points=task.base_points,
+        bonus_points=task.bonus_points,
     )
 
 
@@ -91,4 +95,6 @@ def task_next(
         runs_completed=task.runs_completed,
         priority=task.priority,
         spec_yaml=task.spec_yaml,
+        base_points=task.base_points,
+        bonus_points=task.bonus_points,
     )

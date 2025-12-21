@@ -54,8 +54,14 @@ class Contributor(Base):
     banned_at = Column(DateTime)
     ban_reason = Column(Text)
     is_admin = Column(Boolean, nullable=False, default=False)
+    # Points/reputation system
+    points = Column(Integer, nullable=False, default=0)
+    level = Column(Integer, nullable=False, default=1)
+    streak_days = Column(Integer, nullable=False, default=0)
+    last_contribution_at = Column(DateTime)
 
     results = relationship("Result", back_populates="contributor")
+    point_transactions = relationship("PointTransaction", back_populates="contributor")
 
 
 class Task(Base):
@@ -75,6 +81,10 @@ class Task(Base):
     runs_needed = Column(Integer, nullable=False, default=50)
     runs_completed = Column(Integer, nullable=False, default=0)
     priority = Column(Integer, nullable=False, default=0)
+    # Bounty system
+    base_points = Column(Integer, nullable=False, default=10)
+    bonus_points = Column(Integer, nullable=False, default=0)
+    bonus_reason = Column(Text)
 
     results = relationship("Result", back_populates="task")
 
@@ -167,3 +177,42 @@ class DatasetFlag(Base):
     created_at = Column(DateTime, nullable=False, default=func.now())
 
     __table_args__ = (UniqueConstraint("dataset_id", "flagger_id", "result_id", name="uq_dataset_flag"),)
+
+
+class PointTransaction(Base):
+    """Tracks all point changes for contributors (audit trail + history)."""
+    __tablename__ = "point_transactions"
+
+    id = Column(String(36), primary_key=True, default=_uuid)
+    contributor_id = Column(String(36), ForeignKey("contributors.id"), nullable=False)
+    amount = Column(Integer, nullable=False)  # Can be negative for deductions
+    balance_after = Column(Integer, nullable=False)
+    reason = Column(String(50), nullable=False)  # task_completion, streak_bonus, admin_grant, penalty
+    description = Column(Text)
+    task_id = Column(String(36), ForeignKey("tasks.id"))  # Optional link to task
+    result_id = Column(String(36), ForeignKey("results.id"))  # Optional link to result
+    created_at = Column(DateTime, nullable=False, default=func.now())
+    created_by = Column(String(36), ForeignKey("contributors.id"))  # Admin who granted/deducted
+
+    contributor = relationship("Contributor", back_populates="point_transactions", foreign_keys=[contributor_id])
+
+
+# Point calculation constants
+POINTS_BASE_TASK = 10
+POINTS_PRIORITY_MULTIPLIER = 2  # Extra points per priority level
+POINTS_STREAK_BONUS = 5  # Daily streak bonus
+POINTS_LEVEL_THRESHOLD = 100  # Points per level
+
+
+def calculate_task_points(task: Task, is_first_completion: bool = False) -> int:
+    """Calculate points for completing a task."""
+    points = task.base_points + task.bonus_points
+    points += task.priority * POINTS_PRIORITY_MULTIPLIER
+    if is_first_completion:
+        points += 5  # First blood bonus
+    return points
+
+
+def calculate_level(total_points: int) -> int:
+    """Calculate level from total points."""
+    return max(1, (total_points // POINTS_LEVEL_THRESHOLD) + 1)

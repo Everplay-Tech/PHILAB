@@ -13,6 +13,10 @@ from ..services.stats import compute_stats
 
 router = APIRouter(tags=["platform"])
 
+@router.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
 
 @router.get("/stats", response_model=StatsSummary)
 def stats(

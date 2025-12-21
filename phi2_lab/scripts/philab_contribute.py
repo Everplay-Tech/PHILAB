@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib import parse, request
 
 CONFIG_PATH = Path.home() / ".philab" / "config.json"
-DEFAULT_PLATFORM_URL = "https://api.philab.everplay.tech"
+DEFAULT_PLATFORM_URL = "https://api.technopoets.net"
 
 
 def _load_config() -> dict:

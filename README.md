@@ -176,6 +176,103 @@ python phi2_lab/scripts/run_experiment.py \
   --geometry-residual-sampling-rate 0.2
 ```
 
+## Community Contributions
+
+PHILAB is a distributed research platform. Contributors run experiments on their local hardware and submit results to the community dataset. Earn points, climb the leaderboard, and help map the semantic geometry of language models.
+
+### Getting Started as a Contributor
+
+#### 1. Get an Invite Token
+
+Registration requires an invite token. Request one from the PHILAB team or an existing contributor.
+
+#### 2. Register
+
+```bash
+python phi2_lab/scripts/philab_contribute.py register \
+  --username your_username \
+  --invite-token YOUR_INVITE_TOKEN
+```
+
+Your API key is saved to `~/.philab/config.json`.
+
+#### 3. Browse Tasks
+
+**Via CLI:**
+```bash
+python phi2_lab/scripts/philab_contribute.py list-tasks
+```
+
+**Via Dashboard:**
+Visit [philab.technopoets.net](https://philab.technopoets.net), enter your API key, and click **Tasks**.
+
+#### 4. Run a Task
+
+```bash
+python phi2_lab/scripts/philab_contribute.py run \
+  --task-id <task-id> \
+  --preset gpu_starter
+```
+
+**Presets:**
+| Preset | Hardware | Duration |
+|--------|----------|----------|
+| `cpu_quick` | CPU only | ~5 min |
+| `gpu_starter` | Entry GPU (4GB+) | ~10 min |
+| `gpu_full` | Mid GPU (8GB+) | ~30 min |
+| `gpu_research` | High GPU (16GB+) | ~60 min |
+
+Results are automatically submitted when the run completes.
+
+#### 5. Check Your Progress
+
+```bash
+# Your submitted runs
+python phi2_lab/scripts/philab_contribute.py my-runs
+
+# Community leaderboard
+python phi2_lab/scripts/philab_contribute.py leaderboard
+```
+
+### Points & Bounties
+
+Each task has a point value based on:
+- **Base points** — Standard reward for completion
+- **Bonus points** — Extra reward for priority/complex tasks
+- **Priority multiplier** — Higher priority = more points
+
+Points accumulate on your profile. Level up as you contribute!
+
+### Current Research Focus
+
+We're investigating **semantic geometry** — how language models encode meaning in hyperbolic space. Current tasks explore:
+
+| Relation | Question |
+|----------|----------|
+| **Synonyms** | Do similar words cluster geometrically? |
+| **Antonyms** | Is opposition encoded as direction or shape? |
+| **Hypernyms** | Does abstraction correlate with curvature? |
+| **Hyponyms** | How does categorical branching appear in geometry? |
+| **Meronyms** | Do part-whole relations show containment signatures? |
+
+### Contributor API Reference
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/platform/register` | Register (requires invite) |
+| `GET /api/platform/tasks` | List open tasks |
+| `GET /api/platform/tasks/{id}` | Task details + spec |
+| `POST /api/platform/results` | Submit run results |
+| `GET /api/platform/me` | Your contributor profile |
+| `GET /api/platform/leaderboard` | Points leaderboard |
+
+**Header:** `X-PhiLab-API-Key: <your-api-key>`
+
+### Links
+
+- **Dashboard:** [philab.technopoets.net](https://philab.technopoets.net)
+- **API:** [api.technopoets.net](https://api.technopoets.net)
+
 ## Development
 
 ### Install Development Dependencies

@@ -194,7 +194,7 @@ def _load_lens_specs(path: Path) -> dict:
 
 def _compute_spec_hash(path: Path) -> str:
     payload = path.read_text(encoding="utf-8")
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def _detect_hardware() -> dict:

@@ -1,0 +1,18 @@
+id: "head_ablation_extended"
+description: "Extended dataset ablation - 12 prompts across multiple domains"
+type: "head_ablation"
+
+dataset:
+  name: "ablation_extended"
+  path: "phi2_lab/data/ablation_dataset_extended.jsonl"
+  format: "jsonl"
+
+# Key layers: early (4,8), middle (12,16,20), late (24,28,31)
+layers: [4, 8, 12, 16, 20, 24, 28, 31]
+# Full head sweep
+heads: [0, 4, 8, 12, 16, 20, 24, 28, 31]
+ablation_mode: "zero"
+metrics:
+  - "loss"
+  - "accuracy"
+  - "importance"

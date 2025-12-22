@@ -1,0 +1,18 @@
+id: "head_ablation_comprehensive"
+description: "Comprehensive head importance scan across multiple layers"
+type: "head_ablation"
+
+dataset:
+  name: "demo_head_ablation"
+  path: "phi2_lab/data/head_ablation_demo.jsonl"
+  format: "jsonl"
+
+# Test layers 8, 16, 24 (early, mid, late in 32-layer model)
+layers: [8, 16, 24]
+# Test heads 0, 8, 16, 24 (spread across 32 heads per layer)
+heads: [0, 8, 16, 24]
+ablation_mode: "zero"
+metrics:
+  - "loss"
+  - "accuracy"
+  - "importance"

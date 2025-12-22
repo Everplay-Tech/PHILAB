@@ -1,0 +1,12 @@
+{"input": "The capital of France is Paris", "label": "geography"}
+{"input": "2 + 2 equals 4", "label": "math"}
+{"input": "Water boils at 100 degrees Celsius", "label": "science"}
+{"input": "Shakespeare wrote Hamlet", "label": "literature"}
+{"input": "The sun rises in the east", "label": "nature"}
+{"input": "Dogs are loyal companions", "label": "animals"}
+{"input": "Machine learning uses data to make predictions", "label": "tech"}
+{"input": "The Pythagorean theorem states a squared plus b squared equals c squared", "label": "math"}
+{"input": "Photosynthesis converts sunlight into energy", "label": "biology"}
+{"input": "Neural networks have layers of connected nodes", "label": "ai"}
+{"input": "The speed of light is approximately 300000 kilometers per second", "label": "physics"}
+{"input": "Python is a popular programming language", "label": "coding"}

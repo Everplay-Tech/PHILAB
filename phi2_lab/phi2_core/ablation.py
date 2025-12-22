@@ -22,7 +22,13 @@ def zero_attention_head(layer: nn.Module, head_idx: int, attn_output_tensor: Ten
     if torch is None:
         raise RuntimeError("PyTorch is required for attention head ablations")
 
-    num_heads = getattr(getattr(layer, "self_attn", layer), "num_heads", None)
+    # Try multiple locations for num_heads (different model architectures)
+    attn_module = getattr(layer, "self_attn", layer)
+    num_heads = getattr(attn_module, "num_heads", None)
+    if num_heads is None:
+        num_heads = getattr(attn_module, "num_attention_heads", None)
+    if num_heads is None and hasattr(attn_module, "config"):
+        num_heads = getattr(attn_module.config, "num_attention_heads", None)
     if num_heads is None or num_heads <= head_idx:
         return attn_output_tensor
     if attn_output_tensor.ndim < 3:

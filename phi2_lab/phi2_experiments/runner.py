@@ -111,6 +111,8 @@ class ExperimentRunner:
                 summary, per_head_metrics, metadata, npz_payloads = self._run_direction_intervention(spec)
             elif spec.type == ExperimentType.GEOMETRY:
                 summary, per_head_metrics, metadata, npz_payloads = self._run_geometry(spec)
+            elif spec.type == ExperimentType.SEMANTIC_GEOMETRY:
+                summary, per_head_metrics, metadata, npz_payloads = self._run_semantic_geometry(spec)
             else:
                 raise NotImplementedError(f"Experiment type {spec.type} is not implemented yet")
 
@@ -609,10 +611,98 @@ class ExperimentRunner:
 
         metadata = {
             "type": spec.type.value,
-            "dataset": spec.dataset.name,
+            "dataset": spec.dataset.name if spec.dataset else "inline",
             "records": len(records),
             "hooks": list(activations_by_hook.keys()),
             "components": config.components,
+        }
+        return summary_metrics, {}, metadata, npz_payloads
+
+    def _run_semantic_geometry(
+        self, spec: ExperimentSpec
+    ) -> tuple[Dict[str, Any], Dict[str, Dict[str, Dict[str, float]]], Dict[str, Any], Dict[str, Dict[str, np.ndarray]]]:
+        """Run semantic geometry experiment on word pairs."""
+        self._ensure_torch_available()
+        if not spec.word_pairs:
+            return {"semantic_geometry": {}}, {}, {
+                "type": spec.type.value,
+                "relation": spec.relation,
+                "word_pairs": 0,
+            }, {}
+
+        resources = self.model_manager.load()
+        model = resources.model
+        tokenizer = resources.tokenizer
+        if model is None or tokenizer is None:
+            raise RuntimeError("Model and tokenizer must be loaded for semantic geometry experiments")
+
+        # Auto-generate hooks from layers if none provided
+        if not spec.hooks:
+            total_layers = self._resolve_total_layers(model)
+            layer_indices = spec.iter_layers(total_layers=total_layers)
+            for layer_idx in layer_indices:
+                hook = HookDefinition(
+                    name=f"layer{layer_idx}_mlp",
+                    point=HookPointSpec(layer=layer_idx, component="mlp"),
+                )
+                spec.hooks.append(hook)
+
+        hook_points, hook_aliases = self._build_probe_hook_points(spec)
+        hook_spec = HookSpec(record_points=hook_points)
+
+        # Collect activations for each word in the pairs
+        pair_activations: Dict[str, List[Dict[str, np.ndarray]]] = {}
+        for pair in spec.word_pairs:
+            word1, word2 = pair[0], pair[1]
+            pair_key = f"{word1}_{word2}"
+            pair_activations[pair_key] = []
+            for word in [word1, word2]:
+                tokenized = tokenizer(word, return_tensors="pt", truncation=True, padding=False)
+                inputs = {key: value.to(resources.device) for key, value in tokenized.items()}
+                _outputs, activations = self._forward_with_spec(inputs, hook_spec)
+                word_acts = {}
+                for key, tensor in activations.items():
+                    hook_name = hook_aliases.get(key)
+                    if hook_name:
+                        word_acts[hook_name] = self._flatten_activation(tensor)
+                pair_activations[pair_key].append(word_acts)
+
+        # Compute geometric metrics for each pair at each layer
+        summary_metrics: Dict[str, Any] = {"semantic_geometry": {}}
+        npz_payloads: Dict[str, Dict[str, np.ndarray]] = {}
+
+        for pair_key, word_acts_list in pair_activations.items():
+            if len(word_acts_list) != 2:
+                continue
+            acts1, acts2 = word_acts_list[0], word_acts_list[1]
+            pair_metrics: Dict[str, Dict[str, float]] = {}
+            for hook_name in acts1.keys():
+                if hook_name not in acts2:
+                    continue
+                v1, v2 = acts1[hook_name], acts2[hook_name]
+                # Compute cosine similarity
+                norm1, norm2 = np.linalg.norm(v1), np.linalg.norm(v2)
+                cosine_sim = float(np.dot(v1, v2) / (norm1 * norm2 + 1e-8))
+                # Compute euclidean distance
+                euclidean_dist = float(np.linalg.norm(v1 - v2))
+                pair_metrics[hook_name] = {
+                    "cosine_similarity": cosine_sim,
+                    "euclidean_distance": euclidean_dist,
+                    "norm_word1": float(norm1),
+                    "norm_word2": float(norm2),
+                }
+                npz_payloads[f"{pair_key}:{hook_name}"] = {
+                    "word1_activation": v1.astype(np.float32),
+                    "word2_activation": v2.astype(np.float32),
+                }
+            summary_metrics["semantic_geometry"][pair_key] = pair_metrics
+
+        metadata = {
+            "type": spec.type.value,
+            "relation": spec.relation,
+            "word_pairs": len(spec.word_pairs),
+            "hooks": [hook.name for hook in spec.hooks],
+            "metrics": list(spec.metrics) if spec.metrics else ["cosine_similarity", "euclidean_distance"],
         }
         return summary_metrics, {}, metadata, npz_payloads
 
@@ -893,7 +983,10 @@ class ExperimentRunner:
             return
         tags = []
         # Dataset name and spec id are always tagged
-        tags.append(result.spec.dataset.name)
+        if result.spec.dataset:
+            tags.append(result.spec.dataset.name)
+        elif result.spec.relation:
+            tags.append(result.spec.relation)
         tags.append(result.spec.id)
         # Include any semantic tags provided at runner construction
         tags.extend(self.semantic_tags)
@@ -993,7 +1086,7 @@ def load_and_run(
 ) -> ExperimentResult:
     spec = ExperimentSpec.from_yaml(spec_path)
     resolved_path = Path(spec_path).resolve()
-    if spec.dataset.path:
+    if spec.dataset and spec.dataset.path:
         dataset_path = Path(spec.dataset.path)
         if dataset_path.is_absolute():
             spec.dataset.path = str(dataset_path)
@@ -1017,7 +1110,7 @@ def load_and_run(
     runner.max_length = max_length
     runner.batch_size = batch_size
     runner._spec_path = resolved_path  # type: ignore[attr-defined]
-    if spec.dataset.path:
+    if spec.dataset and spec.dataset.path:
         runner._dataset_path = Path(spec.dataset.path)  # type: ignore[attr-defined]
     # Clip layers/heads if limits provided
     if layer_limit is not None and layer_limit >= 0:

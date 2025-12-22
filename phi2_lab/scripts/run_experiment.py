@@ -367,7 +367,10 @@ def main() -> None:
         tags = []
         if args.atlas_tags:
             tags.extend([t.strip() for t in args.atlas_tags.split(",") if t.strip()])
-        tags.append(result.spec.dataset.name)
+        if result.spec.dataset:
+            tags.append(result.spec.dataset.name)
+        elif result.spec.relation:
+            tags.append(result.spec.relation)
         atlas_writer.record_experiment_findings(
             spec_id=result.spec_id,
             exp_type=result.spec.type.value,

@@ -14,6 +14,7 @@ class ExperimentType(str, Enum):
     PROBE = "probe"
     DIRECTION_INTERVENTION = "direction_intervention"
     GEOMETRY = "geometry"
+    SEMANTIC_GEOMETRY = "semantic_geometry"
 
 
 @dataclass
@@ -247,7 +248,7 @@ class ExperimentSpec:
     id: str
     description: str
     type: ExperimentType
-    dataset: DatasetSpec
+    dataset: DatasetSpec | None
     layers: List[int] | Literal["all"]
     heads: List[int] | Literal["all"]
     ablation_mode: str
@@ -259,6 +260,8 @@ class ExperimentSpec:
     logging: List[LoggingTarget] = field(default_factory=list)
     probe_tasks: List[ProbeTaskSpec] = field(default_factory=list)
     geometry: GeometryConfig | None = None
+    word_pairs: List[List[str]] = field(default_factory=list)
+    relation: str | None = None
 
     def iter_layers(self, total_layers: int | None = None) -> List[int]:
         """Return the layers that should be visited."""
@@ -279,12 +282,12 @@ class ExperimentSpec:
         return list(self.heads)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        data: Dict[str, Any] = {
             "id": self.id,
             "description": self.description,
             "type": self.type.value,
-            "dataset": self.dataset.to_dict(),
-            "layers": list(self.layers),
+            "dataset": self.dataset.to_dict() if self.dataset else None,
+            "layers": "all" if self.layers == "all" else list(self.layers),
             "heads": self.heads if self.heads == "all" else list(self.heads),
             "ablation_mode": self.ablation_mode,
             "metrics": list(self.metrics),
@@ -296,11 +299,23 @@ class ExperimentSpec:
             "probe_tasks": [task.to_dict() for task in self.probe_tasks],
             "geometry": self.geometry.to_dict() if self.geometry else None,
         }
+        if self.word_pairs:
+            data["word_pairs"] = self.word_pairs
+        if self.relation:
+            data["relation"] = self.relation
+        return data
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExperimentSpec":
-        dataset = DatasetSpec.from_dict(data["dataset"])
-        exp_type = ExperimentType(data["type"])
+        # Handle dataset - optional for semantic_geometry tasks
+        dataset = None
+        if "dataset" in data:
+            dataset = DatasetSpec.from_dict(data["dataset"])
+        # Handle type field - can be "type" or "task"
+        type_value = data.get("type") or data.get("task")
+        if not type_value:
+            raise ValueError("Experiment spec must have 'type' or 'task' field")
+        exp_type = ExperimentType(type_value)
         layers_value = data.get("layers")
         if layers_value is None:
             layer_range = data.get("layer_range", (0, 0))
@@ -330,8 +345,10 @@ class ExperimentSpec:
         adapters = data.get("adapters", [])
         if not isinstance(adapters, list):
             raise TypeError("'adapters' must be a list of adapter IDs")
+        # Generate id from type if not provided
+        spec_id = data.get("id") or f"{exp_type.value}_{data.get('relation', 'run')}"
         return cls(
-            id=data["id"],
+            id=spec_id,
             description=data.get("description", ""),
             type=exp_type,
             dataset=dataset,
@@ -346,6 +363,8 @@ class ExperimentSpec:
             logging=logging_targets,
             probe_tasks=probe_tasks,
             geometry=geometry_config,
+            word_pairs=data.get("word_pairs", []),
+            relation=data.get("relation"),
         )
 
     def to_yaml(self, path: str | Path) -> None:

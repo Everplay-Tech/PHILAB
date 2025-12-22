@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 def validate_runtime_config(app_cfg: AppConfig, base: Path | None = None) -> None:
     """Validate key config paths and access-control expectations."""
 
-    base = base or Path(__file__).resolve().parents[2]
+    base = base or Path(__file__).resolve().parents[1]
     # Schema check
-    validate_app_yaml(base / "phi2_lab" / "config" / "app.yaml")
+    validate_app_yaml(base / "config" / "app.yaml")
 
     atlas_path = app_cfg.atlas.resolve_path(base)
     if not atlas_path.parent.exists():

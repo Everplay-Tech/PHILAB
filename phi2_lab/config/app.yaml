@@ -36,7 +36,7 @@ access_control:
     admin: 10000
 
 atlas:
-  path: ./phi2_lab/phi2_atlas/data/atlas.db
+  path: ./phi2_atlas/data/atlas.db
 
 adapters:
   stopping:

@@ -12,7 +12,7 @@ model:
   max_length: 512
 
 atlas:
-  path: ./phi2_lab/phi2_atlas/data/atlas_staging.db
+  path: ./phi2_atlas/data/atlas_staging.db
   embedding_dim: 2560
   max_entries: 5000
 

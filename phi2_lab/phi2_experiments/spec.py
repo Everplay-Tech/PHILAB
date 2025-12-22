@@ -41,8 +41,12 @@ class DatasetSpec:
 
     @classmethod
     def from_dict(cls, payload: Dict[str, Any]) -> "DatasetSpec":
+        name = payload.get("name")
+        if name is None and payload.get("path"):
+            # Derive name from path if not provided
+            name = Path(payload["path"]).stem
         return cls(
-            name=payload["name"],
+            name=name or "unnamed_dataset",
             path=payload.get("path"),
             split=payload.get("split"),
             format=payload.get("format", "jsonl"),
@@ -244,7 +248,7 @@ class ExperimentSpec:
     description: str
     type: ExperimentType
     dataset: DatasetSpec
-    layers: List[int]
+    layers: List[int] | Literal["all"]
     heads: List[int] | Literal["all"]
     ablation_mode: str
     metrics: List[str] = field(default_factory=list)
@@ -256,9 +260,13 @@ class ExperimentSpec:
     probe_tasks: List[ProbeTaskSpec] = field(default_factory=list)
     geometry: GeometryConfig | None = None
 
-    def iter_layers(self) -> List[int]:
+    def iter_layers(self, total_layers: int | None = None) -> List[int]:
         """Return the layers that should be visited."""
 
+        if self.layers == "all":
+            if total_layers is None:
+                raise ValueError("total_layers must be provided when layers == 'all'")
+            return list(range(total_layers))
         return list(self.layers)
 
     def resolve_heads(self, total_heads: int | None = None) -> List[int]:
@@ -293,13 +301,15 @@ class ExperimentSpec:
     def from_dict(cls, data: Dict[str, Any]) -> "ExperimentSpec":
         dataset = DatasetSpec.from_dict(data["dataset"])
         exp_type = ExperimentType(data["type"])
-        layers = data.get("layers")
-        if layers is None:
+        layers_value = data.get("layers")
+        if layers_value is None:
             layer_range = data.get("layer_range", (0, 0))
             start, stop = int(layer_range[0]), int(layer_range[1])
-            layers = list(range(start, stop))
+            layers: List[int] | Literal["all"] = list(range(start, stop))
+        elif layers_value == "all":
+            layers = "all"
         else:
-            layers = [int(layer) for layer in layers]
+            layers = [int(layer) for layer in layers_value]
         heads_value = data.get("heads", [])
         if heads_value == "all":
             heads: List[int] | Literal["all"] = "all"

@@ -12,7 +12,7 @@ model:
   max_length: 100
 
 atlas:
-  path: ./phi2_lab/phi2_atlas/data/atlas_dev.db
+  path: ./phi2_atlas/data/atlas_dev.db
   embedding_dim: 2560
   max_entries: 1000  # Lower limit for dev
 

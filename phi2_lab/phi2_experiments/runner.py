@@ -47,7 +47,7 @@ from .metrics import (
     rank_heads_by_importance,
 )
 from .probes import evaluate_probe, train_linear_probe
-from .spec import ExperimentSpec, ExperimentType, GeometryConfig, ProbeTaskSpec
+from .spec import ExperimentSpec, ExperimentType, GeometryConfig, HookDefinition, HookPointSpec, ProbeTaskSpec
 
 logger = logging.getLogger(__name__)
 DEFAULT_HEAD_COUNT = 32
@@ -152,7 +152,7 @@ class ExperimentRunner:
                 "type": spec.type.value,
                 "dataset": spec.dataset.name,
                 "records": 0,
-                "layers": spec.iter_layers(),
+                "layers": [] if spec.layers == "all" else spec.iter_layers(),
                 "heads": [],
                 "importance_ranking": [],
             }, {}
@@ -175,9 +175,10 @@ class ExperimentRunner:
         per_head_accuracy_deltas: Dict[str, List[float]] = defaultdict(list)
         per_head_importance: Dict[str, List[float]] = defaultdict(list)
 
+        total_layers = self._resolve_total_layers(model)
         total_heads = self._resolve_total_heads(model)
         head_indices = spec.resolve_heads(total_heads=total_heads)
-        for layer in spec.iter_layers():
+        for layer in spec.iter_layers(total_layers=total_layers):
             for head in head_indices:
                 hook_spec = self._build_head_ablation_spec(layer, head)
                 for record_idx, encoded in enumerate(encoded_inputs):
@@ -255,7 +256,7 @@ class ExperimentRunner:
             "type": spec.type.value,
             "dataset": spec.dataset.name,
             "records": len(records),
-            "layers": spec.iter_layers(),
+            "layers": spec.iter_layers(total_layers=total_layers),
             "heads": head_indices,
             "total_heads": total_heads,
             "importance_ranking": importance_ranking,
@@ -534,8 +535,20 @@ class ExperimentRunner:
         self, spec: ExperimentSpec
     ) -> tuple[Dict[str, Any], Dict[str, Dict[str, Dict[str, float]]], Dict[str, Any], Dict[str, Dict[str, np.ndarray]]]:
         self._ensure_torch_available()
+        # Auto-generate hooks from layers if none provided
         if not spec.hooks:
-            raise ValueError("Geometry experiments require at least one hook definition")
+            resources = self.model_manager.load()
+            model = resources.model
+            if model is None:
+                raise RuntimeError("Model must be loaded for geometry experiments")
+            total_layers = self._resolve_total_layers(model)
+            layer_indices = spec.iter_layers(total_layers=total_layers)
+            for layer_idx in layer_indices:
+                hook = HookDefinition(
+                    name=f"layer{layer_idx}_mlp",
+                    point=HookPointSpec(layer=layer_idx, component="mlp"),
+                )
+                spec.hooks.append(hook)
         records = load_dataset_with_limit(spec.dataset, max_records=self.record_limit)
         if not records:
             logger.warning("Experiment %s requested geometry run with empty dataset", spec.id)
@@ -676,6 +689,15 @@ class ExperimentRunner:
             cloned[key] = value.clone()
         return cloned
 
+    def _resolve_total_layers(self, model: Any) -> int:
+        num_layers = getattr(getattr(model, "config", None), "num_hidden_layers", None)
+        if isinstance(num_layers, int) and num_layers > 0:
+            return num_layers
+        fallback = getattr(getattr(model, "config", None), "n_layer", None)
+        if isinstance(fallback, int) and fallback > 0:
+            return fallback
+        return 32  # Default for Phi-2
+
     def _resolve_total_heads(self, model: Any) -> int:
         num_heads = getattr(getattr(model, "config", None), "num_attention_heads", None)
         if isinstance(num_heads, int) and num_heads > 0:
@@ -708,9 +730,16 @@ class ExperimentRunner:
 
     def _flatten_activation(self, tensor: Any) -> np.ndarray:
         if torch is not None and isinstance(tensor, torch.Tensor):
-            return tensor.detach().cpu().reshape(-1).numpy()
-        array = np.asarray(tensor)
-        return array.reshape(-1)
+            arr = tensor.detach().cpu().numpy()
+        else:
+            arr = np.asarray(tensor)
+        # For 3D tensors (batch, seq, hidden), mean pool over sequence dimension
+        if arr.ndim == 3:
+            arr = arr.mean(axis=1)
+        # For 2D tensors (seq, hidden), mean pool over sequence dimension
+        elif arr.ndim == 2 and arr.shape[0] > 1:
+            arr = arr.mean(axis=0, keepdims=True)
+        return arr.reshape(-1)
 
     def _encode_probe_label(self, label: Any, encoder: Dict[str, float]) -> float:
         if isinstance(label, (int, float)):
@@ -992,8 +1021,11 @@ def load_and_run(
         runner._dataset_path = Path(spec.dataset.path)  # type: ignore[attr-defined]
     # Clip layers/heads if limits provided
     if layer_limit is not None and layer_limit >= 0:
-        layers = spec.iter_layers()[: layer_limit or None]
-        spec.layers = layers
+        if spec.layers == "all":
+            spec.layers = list(range(layer_limit))
+        else:
+            layers = spec.iter_layers()[: layer_limit or None]
+            spec.layers = layers
     if head_limit is not None and head_limit >= 0:
         if spec.heads == "all":
             spec.heads = list(range(head_limit))

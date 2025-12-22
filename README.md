@@ -180,6 +180,31 @@ python phi2_lab/scripts/run_experiment.py \
 
 PHILAB is a distributed research platform. Contributors run experiments on their local hardware and submit results to the community dataset. Earn points, climb the leaderboard, and help map the semantic geometry of language models.
 
+### Vibe Coders (Techno Poets)
+
+Running experiments via CLI or with your LLM assistant? Here's the quick path:
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/E-TECH-PLAYTECH/PHILAB.git && cd PHILAB
+python -m venv .venv && source .venv/bin/activate
+pip install -e phi2_lab
+
+# 2. Register (get invite token from the team)
+python phi2_lab/scripts/philab_contribute.py register \
+  --username <your-username> \
+  --invite-token <token>
+
+# 3. Run a task
+python phi2_lab/scripts/philab_contribute.py run \
+  --task-id <task-id> \
+  --preset mps_fast  # or gpu_starter, cpu_quick
+```
+
+That's it. Results auto-submit. Check leaderboard with `philab_contribute.py leaderboard`.
+
+---
+
 ### Getting Started as a Contributor
 
 #### 1. Get an Invite Token

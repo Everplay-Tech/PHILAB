@@ -162,6 +162,11 @@ async function loadRuns() {
   console.log('[PHILAB] renderAll complete');
   } catch (err) {
     console.error('[PHILAB] Error in loadRuns:', err);
+    const legend = document.getElementById('deltaLegend');
+    if (legend) {
+      legend.textContent = `Error loading runs: ${err.message}`;
+      legend.style.color = '#ef4444';
+    }
   }
 }
 

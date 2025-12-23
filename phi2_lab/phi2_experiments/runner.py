@@ -293,6 +293,13 @@ class ExperimentRunner:
         self, spec: ExperimentSpec
     ) -> tuple[Dict[str, Any], Dict[str, Dict[str, Dict[str, float]]], Dict[str, Any], Dict[str, Dict[str, np.ndarray]]]:
         self._ensure_torch_available()
+        resources = self.model_manager.load()
+        model = resources.model
+        tokenizer = resources.tokenizer
+        if model is None or tokenizer is None:
+            raise RuntimeError("Model and tokenizer must be available for probe experiments")
+        # Expand hooks from template or auto-generate
+        self._expand_hooks(spec, model)
         if not spec.hooks:
             raise ValueError("Probe experiments require at least one hook definition")
         records = load_dataset_with_limit(spec.dataset, max_records=self.record_limit)
@@ -304,11 +311,6 @@ class ExperimentRunner:
                 "records": 0,
                 "hooks": [hook.name for hook in spec.hooks],
             }, {}
-
-        resources = self.model_manager.load()
-        tokenizer = resources.tokenizer
-        if tokenizer is None:
-            raise RuntimeError("Tokenizer must be available for probe experiments")
 
         encoded_inputs = [self._tokenize_record(record, tokenizer, resources.device) for record in records]
         hook_points, hook_aliases = self._build_probe_hook_points(spec)

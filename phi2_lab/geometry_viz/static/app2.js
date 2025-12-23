@@ -1819,7 +1819,7 @@ async function loadRemoteDatasets() {
   const datasetSelect = document.getElementById('datasetSelect');
   if (!datasetSelect || !state.remote.apiKey) return;
   try {
-    const url = `${state.remote.url.replace(/\\/$/, '')}/api/platform/datasets`;
+    const url = `${state.remote.url.replace(/\/$/, '')}/api/platform/datasets`;
     const datasets = await fetchJson(url, { headers: getApiHeaders() });
     const baseOptions = [
       { value: 'users', label: 'My Runs' },

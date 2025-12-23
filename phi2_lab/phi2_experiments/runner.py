@@ -537,20 +537,12 @@ class ExperimentRunner:
         self, spec: ExperimentSpec
     ) -> tuple[Dict[str, Any], Dict[str, Dict[str, Dict[str, float]]], Dict[str, Any], Dict[str, Dict[str, np.ndarray]]]:
         self._ensure_torch_available()
-        # Auto-generate hooks from layers if none provided
-        if not spec.hooks:
-            resources = self.model_manager.load()
-            model = resources.model
-            if model is None:
-                raise RuntimeError("Model must be loaded for geometry experiments")
-            total_layers = self._resolve_total_layers(model)
-            layer_indices = spec.iter_layers(total_layers=total_layers)
-            for layer_idx in layer_indices:
-                hook = HookDefinition(
-                    name=f"layer{layer_idx}_mlp",
-                    point=HookPointSpec(layer=layer_idx, component="mlp"),
-                )
-                spec.hooks.append(hook)
+        resources = self.model_manager.load()
+        model = resources.model
+        if model is None:
+            raise RuntimeError("Model must be loaded for geometry experiments")
+        # Expand hooks from template or auto-generate
+        self._expand_hooks(spec, model)
         records = load_dataset_with_limit(spec.dataset, max_records=self.record_limit)
         if not records:
             logger.warning("Experiment %s requested geometry run with empty dataset", spec.id)
@@ -636,16 +628,8 @@ class ExperimentRunner:
         if model is None or tokenizer is None:
             raise RuntimeError("Model and tokenizer must be loaded for semantic geometry experiments")
 
-        # Auto-generate hooks from layers if none provided
-        if not spec.hooks:
-            total_layers = self._resolve_total_layers(model)
-            layer_indices = spec.iter_layers(total_layers=total_layers)
-            for layer_idx in layer_indices:
-                hook = HookDefinition(
-                    name=f"layer{layer_idx}_mlp",
-                    point=HookPointSpec(layer=layer_idx, component="mlp"),
-                )
-                spec.hooks.append(hook)
+        # Expand hooks from template or auto-generate
+        self._expand_hooks(spec, model)
 
         hook_points, hook_aliases = self._build_probe_hook_points(spec)
         hook_spec = HookSpec(record_points=hook_points)
@@ -716,6 +700,48 @@ class ExperimentRunner:
         if hasattr(model, "transformer") and hasattr(model.transformer, "h"):
             return True
         return False
+
+    def _expand_hooks(self, spec: ExperimentSpec, model: Any) -> None:
+        """Expand hooks from template or auto-generate if none provided.
+
+        Priority:
+        1. Explicit hooks - use as-is
+        2. hook_template - expand from template
+        3. Neither - auto-generate MLP hooks for all layers
+        """
+        if spec.hooks:
+            return  # Already have explicit hooks
+
+        total_layers = self._resolve_total_layers(model)
+
+        if spec.hook_template:
+            # Expand from template
+            template = spec.hook_template
+            components = template.components or ["mlp"]
+            if template.layers is not None:
+                if template.layers == "all":
+                    layer_indices = list(range(total_layers))
+                else:
+                    layer_indices = list(template.layers)
+            else:
+                layer_indices = spec.iter_layers(total_layers=total_layers)
+
+            for layer_idx in layer_indices:
+                for component in components:
+                    hook = HookDefinition(
+                        name=f"layer{layer_idx}_{component}",
+                        point=HookPointSpec(layer=layer_idx, component=component),
+                    )
+                    spec.hooks.append(hook)
+        else:
+            # Auto-generate MLP hooks (default fallback)
+            layer_indices = spec.iter_layers(total_layers=total_layers)
+            for layer_idx in layer_indices:
+                hook = HookDefinition(
+                    name=f"layer{layer_idx}_mlp",
+                    point=HookPointSpec(layer=layer_idx, component="mlp"),
+                )
+                spec.hooks.append(hook)
 
     def _tokenize_record(self, record: Record, tokenizer: Any, device: Any) -> Dict[str, Tensor]:
         tokenized = tokenizer(

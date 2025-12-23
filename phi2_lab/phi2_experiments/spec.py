@@ -242,6 +242,30 @@ class LoggingTarget:
 
 
 @dataclass
+class HookTemplate:
+    """Template for auto-generating hooks across layers."""
+
+    components: List[str] = field(default_factory=lambda: ["mlp"])
+    layers: List[int] | Literal["all"] | None = None  # None = use spec.layers
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "components": list(self.components),
+            "layers": self.layers if self.layers == "all" else list(self.layers) if self.layers else None,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "HookTemplate":
+        components = payload.get("components", ["mlp"])
+        if isinstance(components, str):
+            components = [components]
+        return cls(
+            components=list(components),
+            layers=payload.get("layers"),
+        )
+
+
+@dataclass
 class ExperimentSpec:
     """Declarative specification for an experiment run."""
 
@@ -262,6 +286,7 @@ class ExperimentSpec:
     geometry: GeometryConfig | None = None
     word_pairs: List[List[str]] = field(default_factory=list)
     relation: str | None = None
+    hook_template: HookTemplate | None = None
 
     def iter_layers(self, total_layers: int | None = None) -> List[int]:
         """Return the layers that should be visited."""
@@ -303,6 +328,8 @@ class ExperimentSpec:
             data["word_pairs"] = self.word_pairs
         if self.relation:
             data["relation"] = self.relation
+        if self.hook_template:
+            data["hook_template"] = self.hook_template.to_dict()
         return data
 
     @classmethod
@@ -342,6 +369,9 @@ class ExperimentSpec:
         geometry_config = None
         if "geometry" in data and data.get("geometry") is not None:
             geometry_config = GeometryConfig.from_dict(data["geometry"])
+        hook_template = None
+        if "hook_template" in data and data.get("hook_template") is not None:
+            hook_template = HookTemplate.from_dict(data["hook_template"])
         adapters = data.get("adapters", [])
         if not isinstance(adapters, list):
             raise TypeError("'adapters' must be a list of adapter IDs")
@@ -365,6 +395,7 @@ class ExperimentSpec:
             geometry=geometry_config,
             word_pairs=data.get("word_pairs", []),
             relation=data.get("relation"),
+            hook_template=hook_template,
         )
 
     def to_yaml(self, path: str | Path) -> None:

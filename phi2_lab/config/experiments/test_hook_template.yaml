@@ -1,0 +1,15 @@
+id: test_hook_template
+type: geometry
+description: "Test hook_template explicit control"
+dataset:
+  path: phi2_lab/data/ablation_dataset_extended.jsonl
+  format: jsonl
+layers: [0, 1, 2, 3]
+hook_template:
+  components: ["mlp", "self_attn"]
+  layers: [0, 2]
+geometry:
+  method: pca
+  components: 3
+metrics:
+  - variance_explained
